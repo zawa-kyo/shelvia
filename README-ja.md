@@ -114,12 +114,16 @@ shelvia validate
 shelvia list
 ```
 
+`list` は `read_date` の新しい順、同じ日付では `title` の昇順で表示します。表示列は `read_date`、`rating`、`title`、`author`、`genre`、`publisher` です。
+
 条件を指定して検索します。
 
 ```bash
 shelvia query --where 'rating >= 90'
 shelvia query --where 'genre = "Novel" and publisher = "Example Publisher"'
 ```
+
+`query --where` は、`title`、`author`、`rating`、`read_date`、`genre`、`publisher`、`edition`、`imprint`、`series`、`translator` を対象にした絞り込み条件を受け取ります。初回リリースでは `order by` は指定できず、並び順と表示列は `list` と同じです。
 
 ## データ形式
 
@@ -197,10 +201,10 @@ Shelvia は `shelf root` 配下の `.toml` ファイルを再帰的に探索し�
 
 `shelf root` は、次の順に決まります。
 
-1. `--shelf` に指定したディレクトリ
+1. `init PATH` のような `shelf root` 用のコマンド引数、または `--shelf` に指定したディレクトリ
 2. 環境変数 `SHELVIA_DIR`
 
-`--shelf` を指定した場合は、環境変数 `SHELVIA_DIR` よりもその値を優先します。どちらも指定されていない場合、Shelvia はエラー終了します。
+明示的にディレクトリを指定した場合は、環境変数 `SHELVIA_DIR` よりもその値を優先します。どちらも指定されていない場合、Shelvia はエラー終了します。
 
 ```bash
 export SHELVIA_DIR=~/reading-log

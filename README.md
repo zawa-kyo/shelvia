@@ -113,12 +113,16 @@ List your books.
 shelvia list
 ```
 
+`list` sorts by `read_date` descending and then `title` ascending. It prints `read_date`, `rating`, `title`, `author`, `genre`, and `publisher`.
+
 Search with conditions.
 
 ```bash
 shelvia query --where 'rating >= 90'
 shelvia query --where 'genre = "Novel" and publisher = "Example Publisher"'
 ```
+
+`query --where` accepts filter conditions for `title`, `author`, `rating`, `read_date`, `genre`, `publisher`, `edition`, `imprint`, `series`, and `translator`. The first release does not accept `order by`; sorting and displayed columns are the same as `list`.
 
 ## Data Format
 
@@ -196,10 +200,10 @@ Shelvia recursively finds `.toml` files under the `shelf root`. `config.toml` is
 
 Shelvia determines the `shelf root` in this order:
 
-1. The directory passed to `--shelf`
+1. A command argument for the `shelf root`, such as `init PATH`, or the directory passed to `--shelf`
 2. The `SHELVIA_DIR` environment variable
 
-When `--shelf` is passed, it takes precedence over `SHELVIA_DIR`. If neither is set, Shelvia exits with an error.
+When a directory is passed explicitly, it takes precedence over `SHELVIA_DIR`. If neither is set, Shelvia exits with an error.
 
 ```bash
 export SHELVIA_DIR=~/reading-log
