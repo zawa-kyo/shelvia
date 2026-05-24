@@ -39,6 +39,7 @@ shelvia init ./my-shelf
 ```
 
 `init` は、指定した `shelf root` に `config.toml` と `example.toml` を作成します。
+`example.toml` は、検証対象に含まれる書籍データのサンプルファイルです。
 
 ```text
 my-shelf/

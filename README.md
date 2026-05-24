@@ -38,7 +38,7 @@ Create a directory for your reading data. Shelvia calls this directory the `shel
 shelvia init ./my-shelf
 ```
 
-`init` creates `config.toml` and `example.toml` in the specified `shelf root`.
+`init` creates `config.toml` and `example.toml` in the specified `shelf root`. `example.toml` is an example book file that is included in validation.
 
 ```text
 my-shelf/

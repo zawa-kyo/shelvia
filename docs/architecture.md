@@ -52,6 +52,8 @@ Shelvia は 1 つの `shelf root` を受け取り、その配下の `.toml` フ�
 
 `config.toml` には、ジャンル、出版社、判型、レーベル名などの許可値を列挙します。
 
+`example.toml` はテンプレートではなく、検証対象に含まれる実データの例として扱います。`init` 直後の `validate` が成功するように、`example.toml` と `config.toml` は互いに整合する内容で生成します。
+
 ```text
 my-shelf/
   config.toml
@@ -76,9 +78,18 @@ my-shelf/
 - `shelvia list`
 - `shelvia query --where SQL_FRAGMENT`
 
-`init` は、指定された `shelf root` に `config.toml` と `example.toml` を作成します。
+`init` は、指定された `shelf root` に `config.toml` と `example.toml` を作成します。`example.toml` は書籍ファイルとして扱われるため、生成直後から validation に通る内容にします。
 
 `new` は、`<title>.toml` に書籍ファイルのテンプレートを作成します。
+
+`new` が生成するファイル名は macOS、Linux、Windows で安全に扱えるものに正規化します。少なくとも次のルールを満たします。
+
+- パス区切り文字、NUL、制御文字を拒否する
+- Windows で使えない文字 `< > : " / \ | ? *` を拒否する
+- `.`、`..`、空文字、前後空白だけのタイトルを拒否する
+- Windows の予約名 `CON`、`PRN`、`AUX`、`NUL`、`COM1` から `COM9`、`LPT1` から `LPT9` を拒否する
+- 生成先に同名ファイルがある場合は上書きせずエラーにする
+- ファイル名は `<title>.toml` とし、拡張子をユーザー入力から二重に付けない
 
 `validate` は、`shelf root` 全体を読み込み、`list` と `query` でも使える状態かを確認します。
 
@@ -207,9 +218,11 @@ Filesystem adapter は、shelf の読み書きを担当します。
 
 - `shelf root` 配下の `.toml` ファイルを再帰的に探索する
 - `shelf root` 直下の `config.toml` を設定ファイルとして読み込む
+- `shelf root` 直下以外の `config.toml` は誤配置として明示的にエラーにする
 - `config.toml` 以外の `.toml` ファイルを書籍ファイルとして読み込む
 - `init` のために `config.toml` と `example.toml` を作る
 - `new` のために 1 冊分の TOML テンプレートを作る
+- `new` のファイル名を OS 非依存に検証し、既存ファイルを上書きしない
 
 ファイル由来の診断では、`Some Book.toml` のようなユーザーに見えるパスを保持します。
 
@@ -284,7 +297,9 @@ Application、CLI、presentation、filesystem 境界は結合テストで確認�
 - `shelf root` の解決と、未指定時のエラー
 - `init` のファイル作成方針
 - `new` の作成パスと TOML テンプレート
+- `new` のファイル名検証と既存ファイル衝突
 - `config.toml` が書籍ファイルとして扱われないこと
+- 直下以外の `config.toml` が明示エラーになること
 - TOML parsing から application command までの流れ
 - ファイルパスを含む検証エラー
 - `validate`、`list`、`query` の command output
