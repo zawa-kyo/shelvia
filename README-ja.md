@@ -20,6 +20,8 @@ Shelvia は、プレーンテキストの扱いやすさと、データベース
 
 - 1 冊を 1 つの TOML ファイルとして保存
 - 読書データを自分のリポジトリで管理
+- `init` で初期ディレクトリと vocab ファイルを作成
+- `new` で書籍ファイルのひな形を作成
 - 必須項目、評価、日付、ジャンル、出版社などの候補値を検証
 - SQL 風の条件で検索
 - TOML を情報源として扱い、SQLite は検索用の一時ビューとして利用
@@ -30,7 +32,13 @@ Shelvia は、プレーンテキストの扱いやすさと、データベース
 
 ## クイックスタート
 
-読書データを置くディレクトリを用意します。Shelvia では、このディレクトリを `shelf root` と呼びます。
+読書データを置くディレクトリを作成します。Shelvia では、このディレクトリを `shelf root` と呼びます。
+
+```bash
+shelvia init ./my-shelf
+```
+
+`init` は、`books/` と `vocab/`、空の vocab ファイルを作成します。
 
 ```text
 my-shelf/
@@ -44,7 +52,19 @@ my-shelf/
     imprints.toml
 ```
 
-書籍ファイルを `books/` 配下に作成します。
+`shelf root` を環境変数に設定します。
+
+```bash
+export SHELVIA_DIR=./my-shelf
+```
+
+書籍ファイルのひな形を作成します。
+
+```bash
+shelvia new "Some Book" --read-date 2024-01-01
+```
+
+`new` は、`books/2024/Some Book.toml` を作成します。作成されたファイルを開き、書籍情報を入力します。
 
 ```toml
 title = "Some Book"
@@ -57,9 +77,6 @@ edition = "Paperback"
 imprint = "Example Paperback"
 publisher = "Example Publisher"
 
-series = ""
-translator = ""
-
 [thoughts]
 summary = "A short note."
 body = """
@@ -67,7 +84,7 @@ Longer thoughts can live here.
 """
 ```
 
-vocab ファイルを `vocab/` 配下に作成します。vocab ファイルは、ジャンル、出版社、判型、レーベル名などの候補値をまとめるためのファイルです。
+`vocab/` 配下の vocab ファイルに候補値を追加します。vocab ファイルは、ジャンル、出版社、判型、レーベル名などの候補値をまとめるためのファイルです。
 
 ```toml
 # vocab/genres.toml
@@ -95,12 +112,6 @@ imprint_required = true
 values = [
   "Example Paperback",
 ]
-```
-
-`shelf root` を環境変数に設定します。
-
-```bash
-export SHELVIA_DIR=./my-shelf
 ```
 
 データを検証します。
@@ -143,6 +154,8 @@ shelvia query --where 'genre = "Novel" and publisher = "Example Publisher"'
 - `thoughts.body`
 
 `rating` は `0` から `100` の整数です。`read_date` は TOML の日付として書きます。`genre`、`publisher`、`edition`、`imprint` は vocab ファイルと照合します。
+
+任意項目は省略できます。任意項目に空文字を書いた場合も、未指定と同じ扱いになります。
 
 ## vocab
 
@@ -216,7 +229,7 @@ my-shelf/
 1. `--shelf` に指定したディレクトリ
 2. 環境変数 `SHELVIA_DIR`
 
-`--shelf` を指定した場合は、環境変数 `SHELVIA_DIR` よりもその値を優先します。
+`--shelf` を指定した場合は、環境変数 `SHELVIA_DIR` よりもその値を優先します。どちらも指定されていない場合、Shelvia はエラー終了します。
 
 ```bash
 export SHELVIA_DIR=~/reading-log
@@ -230,6 +243,18 @@ shelvia --shelf ~/other-reading-log validate
 
 ```bash
 shelvia validate
+```
+
+成功した場合は、読み込んだ件数を表示します。
+
+```text
+Validated 1 book, 4 vocab files.
+```
+
+失敗した場合は、ファイルパス、場所、理由を表示します。
+
+```text
+books/2024/Some Book.toml:5: unknown genre "Novel"
 ```
 
 `validate` が成功した shelf は、`list` や `query` でも同じように読み込める状態です。データを追加・編集したあと、コミット前の確認として使うことを想定しています。

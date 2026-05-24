@@ -20,6 +20,8 @@ Shelvia is built to keep the convenience of plain text while adding database-lik
 
 - Store one book as one TOML file.
 - Keep reading data in your own repository.
+- Create the initial directory and vocab files with `init`.
+- Create a book file template with `new`.
 - Validate required fields, ratings, dates, genres, publishers, and other controlled values.
 - Search with SQL-like conditions.
 - Treat TOML as the source of truth and use SQLite only as a temporary search view.
@@ -31,6 +33,12 @@ Installation will be added before the first release.
 ## Quick Start
 
 Create a directory for your reading data. Shelvia calls this directory the `shelf root`.
+
+```bash
+shelvia init ./my-shelf
+```
+
+`init` creates `books/`, `vocab/`, and empty vocab files.
 
 ```text
 my-shelf/
@@ -44,7 +52,19 @@ my-shelf/
     imprints.toml
 ```
 
-Create a book file under `books/`.
+Set the `shelf root` in an environment variable.
+
+```bash
+export SHELVIA_DIR=./my-shelf
+```
+
+Create a book file template.
+
+```bash
+shelvia new "Some Book" --read-date 2024-01-01
+```
+
+`new` creates `books/2024/Some Book.toml`. Open the generated file and fill in the book details.
 
 ```toml
 title = "Some Book"
@@ -57,9 +77,6 @@ edition = "Paperback"
 imprint = "Example Paperback"
 publisher = "Example Publisher"
 
-series = ""
-translator = ""
-
 [thoughts]
 summary = "A short note."
 body = """
@@ -67,7 +84,7 @@ Longer thoughts can live here.
 """
 ```
 
-Create vocab files under `vocab/`. Vocab files define allowed values for genres, publishers, editions, imprints, and similar fields.
+Add allowed values to the vocab files under `vocab/`. Vocab files define allowed values for genres, publishers, editions, imprints, and similar fields.
 
 ```toml
 # vocab/genres.toml
@@ -95,12 +112,6 @@ imprint_required = true
 values = [
   "Example Paperback",
 ]
-```
-
-Set the `shelf root` in an environment variable.
-
-```bash
-export SHELVIA_DIR=./my-shelf
 ```
 
 Validate the data.
@@ -143,6 +154,8 @@ Optional fields are:
 - `thoughts.body`
 
 `rating` is an integer from `0` to `100`. `read_date` is written as a TOML date. `genre`, `publisher`, `edition`, and `imprint` are checked against vocab files.
+
+Optional fields can be omitted. Empty strings in optional fields are treated the same as omitted fields.
 
 ## Vocab
 
@@ -216,7 +229,7 @@ Shelvia determines the `shelf root` in this order:
 1. The directory passed to `--shelf`
 2. The `SHELVIA_DIR` environment variable
 
-When `--shelf` is passed, it takes precedence over `SHELVIA_DIR`.
+When `--shelf` is passed, it takes precedence over `SHELVIA_DIR`. If neither is set, Shelvia exits with an error.
 
 ```bash
 export SHELVIA_DIR=~/reading-log
@@ -230,6 +243,18 @@ shelvia --shelf ~/other-reading-log validate
 
 ```bash
 shelvia validate
+```
+
+On success, Shelvia prints the number of loaded files.
+
+```text
+Validated 1 book, 4 vocab files.
+```
+
+On failure, Shelvia prints the file path, location, and reason.
+
+```text
+books/2024/Some Book.toml:5: unknown genre "Novel"
 ```
 
 If `validate` succeeds, the same shelf can be loaded by `list` and `query`. It is intended as a pre-commit check after adding or editing reading data.
