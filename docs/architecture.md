@@ -48,18 +48,15 @@ Onion Architecture と Hexagonal Architecture はどちらも候補になりま�
 
 ## Shelf Model
 
-Shelvia は 1 つの `shelf root` を受け取り、その配下の `books/` と設定ファイルを読み込みます。設定ファイルは `vocab/` ディレクトリに置き、ジャンル、出版社、判型、レーベル名などの許可値を定義します。
+Shelvia は 1 つの `shelf root` を受け取り、その配下の `.toml` ファイルを再帰的に読み込みます。`shelf root` 直下の `config.toml` だけは例外で、書籍ファイルではなく設定ファイルとして扱います。
+
+`config.toml` には、ジャンル、出版社、判型、レーベル名などの許可値を列挙します。
 
 ```text
 my-shelf/
-  books/
-    2024/
-      Some Book.toml
-  vocab/
-    genres.toml
-    publishers.toml
-    editions.toml
-    imprints.toml
+  config.toml
+  example.toml
+  Some Book.toml
 ```
 
 `shelf root` は次の順で決まります。
@@ -79,9 +76,9 @@ my-shelf/
 - `shelvia list`
 - `shelvia query --where SQL_FRAGMENT`
 
-`init` は、`books/`、`vocab/`、空の設定ファイルを作成します。
+`init` は、指定された `shelf root` に `config.toml` と `example.toml` を作成します。
 
-`new` は、`--read-date` の年を使って `books/<year>/<title>.toml` に書籍ファイルのテンプレートを作成します。
+`new` は、`<title>.toml` に書籍ファイルのテンプレートを作成します。
 
 `validate` は、`shelf root` 全体を読み込み、`list` と `query` でも使える状態かを確認します。
 
@@ -111,7 +108,7 @@ CLI レイヤーは、引数の解析、`shelf root` の解決、application へ
 
 Application レイヤーは、コマンドの流れを調停します。
 
-- 設定ファイルを読み込む
+- `config.toml` を読み込む
 - 書籍ファイルを読み込む
 - domain ルールを検証する
 - 一時的な検索ビューを作る
@@ -139,12 +136,13 @@ Domain は、ファイルシステム、SQLite、端末表示、コマンドラ�
 
 Filesystem adapter は、shelf の読み書きを担当します。
 
-- `books/**/*.toml` を再帰的に読み込む
-- `vocab/` から必要な設定ファイルを読み込む
-- `init` のために初期ディレクトリと設定ファイルを作る
-- `new` のために 1 冊分の TOML ひな形を作る
+- `shelf root` 配下の `.toml` ファイルを再帰的に探索する
+- `shelf root` 直下の `config.toml` を設定ファイルとして読み込む
+- `config.toml` 以外の `.toml` ファイルを書籍ファイルとして読み込む
+- `init` のために `config.toml` と `example.toml` を作る
+- `new` のために 1 冊分の TOML テンプレートを作る
 
-ファイル由来の診断では、`books/2024/Some Book.toml` のようなユーザーに見えるパスを保持します。
+ファイル由来の診断では、`Some Book.toml` のようなユーザーに見えるパスを保持します。
 
 ### SQLite Adapter
 
@@ -159,13 +157,13 @@ Presentation レイヤーは、ユーザー向けの表示を担当します。`
 成功例:
 
 ```text
-Validated 1 book, 4 config files.
+Validated 1 book, 1 config file.
 ```
 
 失敗例:
 
 ```text
-books/2024/Some Book.toml:5: unknown genre "Novel"
+Some Book.toml:5: unknown genre "Novel"
 ```
 
 ## Data Flow
@@ -173,8 +171,8 @@ books/2024/Some Book.toml:5: unknown genre "Novel"
 `validate`、`list`、`query` は同じ読み込み経路を使います。
 
 1. `shelf root` を解決する
-2. 設定ファイルを読み込む
-3. 書籍 TOML ファイルを読み込む
+2. `config.toml` を設定ファイルとして読み込む
+3. `config.toml` 以外の `.toml` ファイルを書籍ファイルとして読み込む
 4. TOML の raw data を domain value に変換する
 5. domain ルールを検証する
 6. 診断または検証済み書籍を返す
@@ -217,6 +215,7 @@ Application、CLI、presentation、filesystem 境界は結合テストで確認�
 - `shelf root` の解決と、未指定時のエラー
 - `init` のファイル作成方針
 - `new` の作成パスと TOML テンプレート
+- `config.toml` が書籍ファイルとして扱われないこと
 - TOML parsing から application command までの流れ
 - ファイルパスを含む検証エラー
 - `validate`、`list`、`query` の command output

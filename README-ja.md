@@ -20,7 +20,7 @@ Shelvia は、プレーンテキストの扱いやすさと、データベース
 
 - 1 冊を 1 つの TOML ファイルとして保存
 - 読書データを自分のリポジトリで管理
-- `init` で初期ディレクトリと設定ファイルを作成
+- `init` で `config.toml` と `example.toml` を作成
 - `new` で書籍ファイルのひな形を作成
 - 必須項目、評価、日付、ジャンル、出版社などの候補値を検証
 - SQL 風の条件で検索
@@ -38,18 +38,12 @@ Shelvia は、プレーンテキストの扱いやすさと、データベース
 shelvia init ./my-shelf
 ```
 
-`init` は、`books/` と `vocab/`、空の設定ファイルを作成します。
+`init` は、指定した `shelf root` に `config.toml` と `example.toml` を作成します。
 
 ```text
 my-shelf/
-  books/
-    2024/
-      Some Book.toml
-  vocab/
-    genres.toml
-    publishers.toml
-    editions.toml
-    imprints.toml
+  config.toml
+  example.toml
 ```
 
 `shelf root` を環境変数に設定します。
@@ -64,7 +58,7 @@ export SHELVIA_DIR=./my-shelf
 shelvia new "Some Book" --read-date 2024-01-01
 ```
 
-`new` は、`books/2024/Some Book.toml` を作成します。作成されたファイルを開き、書籍情報を入力します。
+`new` は、`Some Book.toml` を作成します。作成されたファイルを開き、書籍情報を入力します。
 
 ```toml
 title = "Some Book"
@@ -84,34 +78,27 @@ Longer thoughts can live here.
 """
 ```
 
-`vocab/` 配下の設定ファイルに候補値を追加します。設定ファイルは、ジャンル、出版社、判型、レーベル名などの候補値をまとめるためのファイルです。
+`config.toml` に候補値を追加します。`config.toml` は、ジャンル、出版社、判型、レーベル名などの候補値をまとめるための設定ファイルです。
 
 ```toml
-# vocab/genres.toml
-values = [
+kind = "shelvia-config"
+
+[values]
+genres = [
   "Novel",
 ]
-```
 
-```toml
-# vocab/publishers.toml
-values = [
+publishers = [
   "Example Publisher",
 ]
-```
 
-```toml
-# vocab/editions.toml
-[[values]]
-name = "Paperback"
-imprint_required = true
-```
-
-```toml
-# vocab/imprints.toml
-values = [
+imprints = [
   "Example Paperback",
 ]
+
+[[values.editions]]
+name = "Paperback"
+imprint_required = true
 ```
 
 データを検証します。
@@ -153,76 +140,59 @@ shelvia query --where 'genre = "Novel" and publisher = "Example Publisher"'
 - `thoughts.summary`
 - `thoughts.body`
 
-`rating` は `0` から `100` の整数です。`read_date` は TOML の日付として書きます。`genre`、`publisher`、`edition`、`imprint` は設定ファイルと照合します。
+`rating` は `0` から `100` の整数です。`read_date` は TOML の日付として書きます。`genre`、`publisher`、`edition`、`imprint` は `config.toml` と照合します。
 
 任意項目は省略できます。任意項目に空文字を書いた場合も、未指定と同じ扱いになります。
 
-## 設定ファイル
+## `config.toml`
 
-設定ファイルは、ジャンル、出版社、判型、レーベル名などの表記揺れを防ぐためのファイルです。Shelvia は `shelf root` の `vocab/` 配下から、次のファイルを読み込みます。
+`config.toml` は、ジャンル、出版社、判型、レーベル名などの表記揺れを防ぐための設定ファイルです。Shelvia は `shelf root` 直下の `config.toml` から設定値を読み込みます。
 
-- `genres.toml`
-- `publishers.toml`
-- `editions.toml`
-- `imprints.toml`
-
-genre も設定ファイルで管理します。使わない設定ファイルがある場合でも、対応するファイルは作成し、空の `values` を置いておきます。
+genre も `config.toml` で管理します。使わない候補値がある場合でも、対応する配列は作成し、空の配列を置いておきます。
 
 ```toml
-# vocab/genres.toml
-values = [
+kind = "shelvia-config"
+
+[values]
+genres = [
   "Novel",
   "Essay",
   "Technical",
   "Business",
 ]
-```
 
-```toml
-# vocab/publishers.toml
-values = [
+publishers = [
   "Example Publisher",
   "Another Publisher",
 ]
-```
 
-```toml
-# vocab/editions.toml
-[[values]]
+imprints = [
+  "Example Paperback",
+]
+
+[[values.editions]]
 name = "Paperback"
 imprint_required = true
 
-[[values]]
+[[values.editions]]
 name = "Hardcover"
 imprint_required = false
-```
-
-```toml
-# vocab/imprints.toml
-values = [
-  "Example Paperback",
-]
 ```
 
 `imprint_required = true` の edition を指定した場合、imprint の省略はエラーになります。imprint を指定する場合は edition も必要です。
 
 ## `shelf root`
 
-Shelvia は `shelf root` を 1 つ受け取り、その配下の `books/` と `vocab/` を読み込みます。
+Shelvia は `shelf root` を 1 つ受け取り、その配下の `.toml` ファイルを再帰的に読み込みます。ただし、`shelf root` 直下の `config.toml` は書籍ファイルではなく設定ファイルとして扱います。
 
 ```text
 my-shelf/
-  books/
-    2024/
-      Some Book.toml
-  vocab/
-    genres.toml
-    publishers.toml
-    editions.toml
-    imprints.toml
+  config.toml
+  example.toml
+  Some Book.toml
 ```
 
-`books/` 配下では、`.toml` ファイルを再帰的に読み込みます。`vocab/` 配下では、`genres.toml`、`publishers.toml`、`editions.toml`、`imprints.toml` を読み込みます。
+Shelvia は `shelf root` 配下の `.toml` ファイルを再帰的に探索します。`config.toml` だけは例外として設定値の読み込みに使います。
 
 `shelf root` は、次の順に決まります。
 
@@ -239,7 +209,7 @@ shelvia --shelf ~/other-reading-log validate
 
 ## 検証
 
-`validate` は、`shelf root` 全体を読み込めることだけを確認するためのコマンドです。書籍ファイルと設定ファイルを読み込み、必須項目、型、評価、日付、設定ファイル参照、edition と imprint の関係を検証します。ファイルの作成、更新、変換は行いません。
+`validate` は、`shelf root` 全体を読み込めることだけを確認するためのコマンドです。書籍ファイルと `config.toml` を読み込み、必須項目、型、評価、日付、設定ファイル参照、edition と imprint の関係を検証します。ファイルの作成、更新、変換は行いません。
 
 ```bash
 shelvia validate
@@ -248,13 +218,13 @@ shelvia validate
 成功した場合は、読み込んだ件数を表示します。
 
 ```text
-Validated 1 book, 4 config files.
+Validated 1 book, 1 config file.
 ```
 
 失敗した場合は、ファイルパス、場所、理由を表示します。
 
 ```text
-books/2024/Some Book.toml:5: unknown genre "Novel"
+Some Book.toml:5: unknown genre "Novel"
 ```
 
 `validate` が成功した shelf は、`list` や `query` でも同じように読み込める状態です。データを追加・編集したあと、コミット前の確認として使うことを想定しています。

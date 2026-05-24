@@ -20,7 +20,7 @@ Shelvia is built to keep the convenience of plain text while adding database-lik
 
 - Store one book as one TOML file.
 - Keep reading data in your own repository.
-- Create the initial directory and config files with `init`.
+- Create `config.toml` and `example.toml` with `init`.
 - Create a book file template with `new`.
 - Validate required fields, ratings, dates, genres, publishers, and other controlled values.
 - Search with SQL-like conditions.
@@ -38,18 +38,12 @@ Create a directory for your reading data. Shelvia calls this directory the `shel
 shelvia init ./my-shelf
 ```
 
-`init` creates `books/`, `vocab/`, and empty config files.
+`init` creates `config.toml` and `example.toml` in the specified `shelf root`.
 
 ```text
 my-shelf/
-  books/
-    2024/
-      Some Book.toml
-  vocab/
-    genres.toml
-    publishers.toml
-    editions.toml
-    imprints.toml
+  config.toml
+  example.toml
 ```
 
 Set the `shelf root` in an environment variable.
@@ -64,7 +58,7 @@ Create a book file template.
 shelvia new "Some Book" --read-date 2024-01-01
 ```
 
-`new` creates `books/2024/Some Book.toml`. Open the generated file and fill in the book details.
+`new` creates `Some Book.toml`. Open the generated file and fill in the book details.
 
 ```toml
 title = "Some Book"
@@ -84,34 +78,27 @@ Longer thoughts can live here.
 """
 ```
 
-Add allowed values to the config files under `vocab/`. Config files define allowed values for genres, publishers, editions, imprints, and similar fields.
+Add allowed values to `config.toml`. `config.toml` defines allowed values for genres, publishers, editions, imprints, and similar fields.
 
 ```toml
-# vocab/genres.toml
-values = [
+kind = "shelvia-config"
+
+[values]
+genres = [
   "Novel",
 ]
-```
 
-```toml
-# vocab/publishers.toml
-values = [
+publishers = [
   "Example Publisher",
 ]
-```
 
-```toml
-# vocab/editions.toml
-[[values]]
-name = "Paperback"
-imprint_required = true
-```
-
-```toml
-# vocab/imprints.toml
-values = [
+imprints = [
   "Example Paperback",
 ]
+
+[[values.editions]]
+name = "Paperback"
+imprint_required = true
 ```
 
 Validate the data.
@@ -153,76 +140,59 @@ Optional fields are:
 - `thoughts.summary`
 - `thoughts.body`
 
-`rating` is an integer from `0` to `100`. `read_date` is written as a TOML date. `genre`, `publisher`, `edition`, and `imprint` are checked against config files.
+`rating` is an integer from `0` to `100`. `read_date` is written as a TOML date. `genre`, `publisher`, `edition`, and `imprint` are checked against `config.toml`.
 
 Optional fields can be omitted. Empty strings in optional fields are treated the same as omitted fields.
 
-## Config Files
+## `config.toml`
 
-Config files prevent inconsistent names for genres, publishers, editions, and imprints. Shelvia reads these files from `vocab/` under the `shelf root`:
+`config.toml` prevents inconsistent names for genres, publishers, editions, and imprints. Shelvia reads config values from `config.toml` directly under the `shelf root`.
 
-- `genres.toml`
-- `publishers.toml`
-- `editions.toml`
-- `imprints.toml`
-
-Genres are user-managed config values too. If a config type is not used yet, create the file anyway and leave `values` empty.
+Genres are user-managed config values too. If a config type is not used yet, create the array anyway and leave it empty.
 
 ```toml
-# vocab/genres.toml
-values = [
+kind = "shelvia-config"
+
+[values]
+genres = [
   "Novel",
   "Essay",
   "Technical",
   "Business",
 ]
-```
 
-```toml
-# vocab/publishers.toml
-values = [
+publishers = [
   "Example Publisher",
   "Another Publisher",
 ]
-```
 
-```toml
-# vocab/editions.toml
-[[values]]
+imprints = [
+  "Example Paperback",
+]
+
+[[values.editions]]
 name = "Paperback"
 imprint_required = true
 
-[[values]]
+[[values.editions]]
 name = "Hardcover"
 imprint_required = false
-```
-
-```toml
-# vocab/imprints.toml
-values = [
-  "Example Paperback",
-]
 ```
 
 When an edition has `imprint_required = true`, omitting the imprint is an error. If an imprint is present, an edition must also be present.
 
 ## `shelf root`
 
-Shelvia receives one `shelf root` and reads `books/` and `vocab/` under it.
+Shelvia receives one `shelf root` and recursively reads `.toml` files under it. The only exception is `config.toml` directly under the `shelf root`, which is treated as the config file instead of a book file.
 
 ```text
 my-shelf/
-  books/
-    2024/
-      Some Book.toml
-  vocab/
-    genres.toml
-    publishers.toml
-    editions.toml
-    imprints.toml
+  config.toml
+  example.toml
+  Some Book.toml
 ```
 
-Under `books/`, Shelvia recursively loads `.toml` files. Under `vocab/`, it reads `genres.toml`, `publishers.toml`, `editions.toml`, and `imprints.toml`.
+Shelvia recursively finds `.toml` files under the `shelf root`. `config.toml` is the exception and is used for config values.
 
 Shelvia determines the `shelf root` in this order:
 
@@ -239,7 +209,7 @@ shelvia --shelf ~/other-reading-log validate
 
 ## Validation
 
-`validate` only checks that the whole `shelf root` can be loaded. It reads book files and config files, then validates required fields, types, ratings, dates, config references, and the relationship between editions and imprints. It does not create, update, or convert files.
+`validate` only checks that the whole `shelf root` can be loaded. It reads book files and `config.toml`, then validates required fields, types, ratings, dates, config references, and the relationship between editions and imprints. It does not create, update, or convert files.
 
 ```bash
 shelvia validate
@@ -248,13 +218,13 @@ shelvia validate
 On success, Shelvia prints the number of loaded files.
 
 ```text
-Validated 1 book, 4 config files.
+Validated 1 book, 1 config file.
 ```
 
 On failure, Shelvia prints the file path, location, and reason.
 
 ```text
-books/2024/Some Book.toml:5: unknown genre "Novel"
+Some Book.toml:5: unknown genre "Novel"
 ```
 
 If `validate` succeeds, the same shelf can be loaded by `list` and `query`. It is intended as a pre-commit check after adding or editing reading data.
