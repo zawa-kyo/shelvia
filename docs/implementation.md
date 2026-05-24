@@ -57,7 +57,7 @@ Go 実装では、Clean Architecture の境界を `internal/` 配下に置きま
 │           └── output.go
 ├── docs/
 │   ├── architecture.md
-│   ├── shelf.md
+│   ├── cli-behavior.md
 │   ├── implementation.md
 │   └── testing.md
 ├── fixtures/
@@ -155,7 +155,7 @@ Domain は、ファイルシステム、SQLite、端末表示、コマンドラ�
 
 ### Local Filesystem Adapter
 
-Local filesystem adapter は、OS のファイルシステム上にある shelf の読み書きを担当します。`.toml` 探索と `config.toml` の扱いは [Shelf and Commands](./shelf.md) に従います。
+Local filesystem adapter は、OS のファイルシステム上にある shelf の読み書きを担当します。`.toml` 探索と `config.toml` の扱いは [CLI Behavior](./cli-behavior.md) に従います。
 
 - `init` のために `config.toml` と `example.toml` を作る
 - `new` のために 1 冊分の TOML テンプレートを作る
@@ -167,7 +167,7 @@ Local filesystem adapter は、OS のファイルシステム上にある shelf 
 
 Query engine adapter は、検証済みの書籍からインメモリの検索ビューを作ります。初回実装では内部実装として SQLite を使ってよいですが、package 名には永続化方式やライブラリ名を出しません。SQLite は検索を助けるための一時ビューであり、永続化は行いません。
 
-`query --where` は、最終的な SQL を組み立てる前に、[Shelf and Commands](./shelf.md) で定義した範囲に収まるかを検証します。初回リリースでは保守的にし、未対応の SQL fragment は adapter 境界で拒否します。
+`query --where` は、最終的な SQL を組み立てる前に、[CLI Behavior](./cli-behavior.md) で定義した範囲に収まるかを検証します。初回リリースでは保守的にし、未対応の SQL fragment は adapter 境界で拒否します。
 
 ### Presentation
 

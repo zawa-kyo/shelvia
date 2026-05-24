@@ -1,4 +1,6 @@
-# Shelf and Commands
+# CLI Behavior
+
+このドキュメントは、Shelvia の CLI から見える挙動を定義します。各コマンドが `shelf root` をどう解決し、shelf 内のファイルをどう読み込み、結果をどう表示・検索するかを扱います。
 
 ## Shelf Model
 

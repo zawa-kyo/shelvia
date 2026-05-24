@@ -17,7 +17,7 @@
 ## Architecture
 
 - Follow the architecture and invariants in `docs/architecture.md` when adding implementation.
-- Follow `docs/shelf.md` for `shelf root`, `config.toml`, file discovery, and command behavior.
+- Follow `docs/cli-behavior.md` for `shelf root`, `config.toml`, file discovery, and command behavior.
 - Follow `docs/implementation.md` for package layout, layer responsibilities, and dependency direction.
 - Follow `docs/testing.md` for the test strategy.
 - Use Clean Architecture as the default dependency rule. Domain code must not depend on CLI, filesystem, SQLite, or presentation details.

@@ -14,7 +14,7 @@ OpenAI のハーネスエンジニアリングの考え方に従い、`AGENTS.md
 
 ## 詳細文書
 
-- [Shelf and Commands](./shelf.md): `shelf root`、`config.toml`、読み込みルール、CLI コマンド仕様
+- [CLI Behavior](./cli-behavior.md): `shelf root`、`config.toml`、読み込みルール、CLI コマンド仕様
 - [Implementation](./implementation.md): Clean Architecture、ディレクトリ構成、依存方向、adapter 責務
 - [Testing](./testing.md): domain 単体テスト、application-level integration test、adapter test の方針
 
