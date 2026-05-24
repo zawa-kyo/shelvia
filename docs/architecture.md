@@ -100,6 +100,75 @@ inner
 
 依存方向は外側から内側へ向けます。内側の domain は外側の実装詳細を知りません。Application は ports を定義し、外側の adapters がそれを実装します。
 
+## Directory Structure
+
+Go 実装では、Clean Architecture の境界を `internal/` 配下に置きます。初回リリースでは過度に細かく分けず、外側の adapter と内側の domain/application が見分けられる粒度に留めます。
+
+```text
+.
+├── cmd/
+│   └── shelvia/
+│       └── main.go
+├── internal/
+│   ├── domain/
+│   │   ├── book.go
+│   │   ├── config.go
+│   │   ├── validation.go
+│   │   └── value_objects.go
+│   ├── application/
+│   │   ├── commands.go
+│   │   ├── ports.go
+│   │   ├── shelf_service.go
+│   │   └── query_service.go
+│   └── adapter/
+│       ├── cli/
+│       │   ├── parser.go
+│       │   └── runner.go
+│       ├── filesystem/
+│       │   ├── shelf_repository.go
+│       │   └── templates.go
+│       ├── sqlite/
+│       │   └── query_store.go
+│       └── presentation/
+│           └── output.go
+├── docs/
+│   └── architecture.md
+├── mocks/
+├── README-ja.md
+├── README.md
+└── AGENTS.md
+```
+
+各ディレクトリの責務は次のとおりです。
+
+- `cmd/shelvia`: 実行可能ファイルの入口。依存の組み立てだけを行い、業務ロジックを持たない
+- `internal/domain`: 書籍、設定値、値オブジェクト、純粋な検証ルール
+- `internal/application`: use case と port 定義。domain と port interface にだけ依存する
+- `internal/adapter/cli`: コマンドライン引数を application command に変換する
+- `internal/adapter/filesystem`: `shelf root` の `.toml` 探索、`config.toml` 読み込み、テンプレート作成
+- `internal/adapter/sqlite`: 検証済み書籍から一時 SQLite ビューを作り、query port を実装する
+- `internal/adapter/presentation`: 成功・失敗・検索結果の表示整形
+- `docs`: エージェントと実装者向けの設計文書
+- `mocks`: README や手動確認で使うサンプル shelf
+
+依存方向は次の形に固定します。
+
+```text
+cmd/shelvia
+  -> internal/adapter/*
+    -> internal/application
+      -> internal/domain
+```
+
+禁止する依存は次のとおりです。
+
+- `internal/domain` から `internal/application` や `internal/adapter` へ依存しない
+- `internal/application` から `internal/adapter` へ依存しない
+- `internal/adapter/sqlite` の型を domain や application の公開型に混ぜない
+- CLI parser の都合を domain の型や validation に持ち込まない
+
+小さいうちは package を増やしすぎません。新しい adapter や service は、重複を減らすか依存境界を守る必要が出た時点で追加します。
+
 ### CLI
 
 CLI レイヤーは、引数の解析、`shelf root` の解決、application へのコマンド委譲だけを担当します。書籍の意味的な検証や、TOML・SQLite の構造には踏み込みません。
