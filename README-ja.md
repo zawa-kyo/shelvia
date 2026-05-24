@@ -20,7 +20,7 @@ Shelvia は、プレーンテキストの扱いやすさと、データベース
 
 - 1 冊を 1 つの TOML ファイルとして保存
 - 読書データを自分のリポジトリで管理
-- `init` で初期ディレクトリと vocab ファイルを作成
+- `init` で初期ディレクトリと設定ファイルを作成
 - `new` で書籍ファイルのひな形を作成
 - 必須項目、評価、日付、ジャンル、出版社などの候補値を検証
 - SQL 風の条件で検索
@@ -38,7 +38,7 @@ Shelvia は、プレーンテキストの扱いやすさと、データベース
 shelvia init ./my-shelf
 ```
 
-`init` は、`books/` と `vocab/`、空の vocab ファイルを作成します。
+`init` は、`books/` と `vocab/`、空の設定ファイルを作成します。
 
 ```text
 my-shelf/
@@ -84,7 +84,7 @@ Longer thoughts can live here.
 """
 ```
 
-`vocab/` 配下の vocab ファイルに候補値を追加します。vocab ファイルは、ジャンル、出版社、判型、レーベル名などの候補値をまとめるためのファイルです。
+`vocab/` 配下の設定ファイルに候補値を追加します。設定ファイルは、ジャンル、出版社、判型、レーベル名などの候補値をまとめるためのファイルです。
 
 ```toml
 # vocab/genres.toml
@@ -153,20 +153,20 @@ shelvia query --where 'genre = "Novel" and publisher = "Example Publisher"'
 - `thoughts.summary`
 - `thoughts.body`
 
-`rating` は `0` から `100` の整数です。`read_date` は TOML の日付として書きます。`genre`、`publisher`、`edition`、`imprint` は vocab ファイルと照合します。
+`rating` は `0` から `100` の整数です。`read_date` は TOML の日付として書きます。`genre`、`publisher`、`edition`、`imprint` は設定ファイルと照合します。
 
 任意項目は省略できます。任意項目に空文字を書いた場合も、未指定と同じ扱いになります。
 
-## vocab
+## 設定ファイル
 
-vocab は、ジャンル、出版社、判型、レーベル名などの表記揺れを防ぐためのファイルです。Shelvia は `shelf root` の `vocab/` 配下から、次のファイルを読み込みます。
+設定ファイルは、ジャンル、出版社、判型、レーベル名などの表記揺れを防ぐためのファイルです。Shelvia は `shelf root` の `vocab/` 配下から、次のファイルを読み込みます。
 
 - `genres.toml`
 - `publishers.toml`
 - `editions.toml`
 - `imprints.toml`
 
-genre もユーザーが vocab として管理します。使わない vocab がある場合でも、対応するファイルは作成し、空の `values` を置いておきます。
+genre も設定ファイルで管理します。使わない設定ファイルがある場合でも、対応するファイルは作成し、空の `values` を置いておきます。
 
 ```toml
 # vocab/genres.toml
@@ -239,7 +239,7 @@ shelvia --shelf ~/other-reading-log validate
 
 ## 検証
 
-`validate` は、`shelf root` 全体を読み込めることだけを確認するためのコマンドです。書籍ファイルと vocab を読み込み、必須項目、型、評価、日付、vocab 参照、edition と imprint の関係を検証します。ファイルの作成、更新、変換は行いません。
+`validate` は、`shelf root` 全体を読み込めることだけを確認するためのコマンドです。書籍ファイルと設定ファイルを読み込み、必須項目、型、評価、日付、設定ファイル参照、edition と imprint の関係を検証します。ファイルの作成、更新、変換は行いません。
 
 ```bash
 shelvia validate
@@ -248,7 +248,7 @@ shelvia validate
 成功した場合は、読み込んだ件数を表示します。
 
 ```text
-Validated 1 book, 4 vocab files.
+Validated 1 book, 4 config files.
 ```
 
 失敗した場合は、ファイルパス、場所、理由を表示します。

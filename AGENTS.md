@@ -15,5 +15,6 @@
 ## Architecture
 
 - Follow the architecture and invariants in `docs/architecture.md` when adding implementation.
+- Use Clean Architecture as the default dependency rule. Domain code must not depend on CLI, filesystem, SQLite, or presentation details.
 - Update `docs/architecture.md` in the same change when architectural decisions, command behavior, data flow, or validation boundaries change.
 - Shelvia is a CLI tool, so design documentation should focus on architecture, command behavior, data format, validation, diagnostics, and test strategy rather than visual design.

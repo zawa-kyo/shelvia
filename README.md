@@ -20,7 +20,7 @@ Shelvia is built to keep the convenience of plain text while adding database-lik
 
 - Store one book as one TOML file.
 - Keep reading data in your own repository.
-- Create the initial directory and vocab files with `init`.
+- Create the initial directory and config files with `init`.
 - Create a book file template with `new`.
 - Validate required fields, ratings, dates, genres, publishers, and other controlled values.
 - Search with SQL-like conditions.
@@ -38,7 +38,7 @@ Create a directory for your reading data. Shelvia calls this directory the `shel
 shelvia init ./my-shelf
 ```
 
-`init` creates `books/`, `vocab/`, and empty vocab files.
+`init` creates `books/`, `vocab/`, and empty config files.
 
 ```text
 my-shelf/
@@ -84,7 +84,7 @@ Longer thoughts can live here.
 """
 ```
 
-Add allowed values to the vocab files under `vocab/`. Vocab files define allowed values for genres, publishers, editions, imprints, and similar fields.
+Add allowed values to the config files under `vocab/`. Config files define allowed values for genres, publishers, editions, imprints, and similar fields.
 
 ```toml
 # vocab/genres.toml
@@ -153,20 +153,20 @@ Optional fields are:
 - `thoughts.summary`
 - `thoughts.body`
 
-`rating` is an integer from `0` to `100`. `read_date` is written as a TOML date. `genre`, `publisher`, `edition`, and `imprint` are checked against vocab files.
+`rating` is an integer from `0` to `100`. `read_date` is written as a TOML date. `genre`, `publisher`, `edition`, and `imprint` are checked against config files.
 
 Optional fields can be omitted. Empty strings in optional fields are treated the same as omitted fields.
 
-## Vocab
+## Config Files
 
-Vocab files prevent inconsistent names for genres, publishers, editions, and imprints. Shelvia reads these files from `vocab/` under the `shelf root`:
+Config files prevent inconsistent names for genres, publishers, editions, and imprints. Shelvia reads these files from `vocab/` under the `shelf root`:
 
 - `genres.toml`
 - `publishers.toml`
 - `editions.toml`
 - `imprints.toml`
 
-Genres are user-managed vocab values too. If a vocab type is not used yet, create the file anyway and leave `values` empty.
+Genres are user-managed config values too. If a config type is not used yet, create the file anyway and leave `values` empty.
 
 ```toml
 # vocab/genres.toml
@@ -239,7 +239,7 @@ shelvia --shelf ~/other-reading-log validate
 
 ## Validation
 
-`validate` only checks that the whole `shelf root` can be loaded. It reads book files and vocab, then validates required fields, types, ratings, dates, vocab references, and the relationship between editions and imprints. It does not create, update, or convert files.
+`validate` only checks that the whole `shelf root` can be loaded. It reads book files and config files, then validates required fields, types, ratings, dates, config references, and the relationship between editions and imprints. It does not create, update, or convert files.
 
 ```bash
 shelvia validate
@@ -248,7 +248,7 @@ shelvia validate
 On success, Shelvia prints the number of loaded files.
 
 ```text
-Validated 1 book, 4 vocab files.
+Validated 1 book, 4 config files.
 ```
 
 On failure, Shelvia prints the file path, location, and reason.
