@@ -151,7 +151,7 @@ Domain レイヤーは、書籍と設定ファイル由来の許可値に関す�
 - `edition.imprint_required = true` の場合は `imprint` が必須になる
 - 任意テキスト項目の空文字は未指定として扱う
 
-Domain は、ファイルシステム、SQLite、端末表示、コマンドライン引数に依存しません。
+Domain は、local filesystem、query engine、端末表示、コマンドライン引数に依存しません。
 
 ### Local Filesystem Adapter
 

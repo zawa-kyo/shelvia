@@ -42,13 +42,13 @@ OpenAI のハーネスエンジニアリングの考え方に従い、`AGENTS.md
 
 ## アーキテクチャ方針
 
-Shelvia は Clean Architecture に則ります。依存方向は常に内側へ向け、domain は application、CLI、filesystem、SQLite、presentation に依存しません。
+Shelvia は Clean Architecture に則ります。依存方向は常に内側へ向け、domain は application、CLI、local filesystem、query engine、presentation に依存しません。
 
 Onion Architecture と Hexagonal Architecture はどちらも候補になりますが、この CLI では Clean Architecture を基本方針にし、外部依存との境界表現として Hexagonal Architecture の ports/adapters を採用します。
 
 理由は次のとおりです。
 
-- CLI、filesystem、SQLite、presentation という外部境界が明確で、ports/adapters と相性がよい
+- CLI、local filesystem、query engine、presentation という外部境界が明確で、ports/adapters と相性がよい
 - Domain を中心に置く点は Onion Architecture と同じだが、CLI ツールでは「どの外部入出力を adapter として差し替えるか」を明示した方が実装しやすい
 - Clean Architecture の依存ルールを上位方針にすれば、Onion と Hexagonal のよい部分を過不足なく使える
 
@@ -58,7 +58,7 @@ Onion Architecture と Hexagonal Architecture はどちらも候補になりま�
 
 - 永続化は TOML ファイルのみで行い、DB は永続化しない
 - SQLite は TOML から再構築され、SQLite 側の変更を TOML へ書き戻さない
-- domain validation は SQLite に投入する前に完了する
+- domain validation は query engine の検索ビューに投入する前に完了する
 - ファイル由来のエラーは、ユーザーが直すべきファイルパスを含む
 - 依存方向は Clean Architecture の内側へ向ける
 - `README.md` と `README-ja.md` は、ユーザー向けの挙動について同期する

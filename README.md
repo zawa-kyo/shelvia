@@ -187,7 +187,7 @@ When an edition has `imprint_required = true`, omitting the imprint is an error.
 
 ## `shelf root`
 
-Shelvia receives one `shelf root` and recursively reads `.toml` files under it. The only exception is `config.toml` directly under the `shelf root`, which is treated as the config file instead of a book file.
+Shelvia receives one `shelf root` and recursively reads `.toml` files under it. The only exception is `config.toml` directly under the `shelf root`, which is treated as the config file instead of a book file. A `config.toml` anywhere else is reported as a misplaced config file.
 
 ```text
 my-shelf/

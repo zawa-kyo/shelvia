@@ -188,7 +188,7 @@ imprint_required = false
 
 ## `shelf root`
 
-Shelvia は `shelf root` を 1 つ受け取り、その配下の `.toml` ファイルを再帰的に読み込みます。ただし、`shelf root` 直下の `config.toml` は書籍ファイルではなく設定ファイルとして扱います。
+Shelvia は `shelf root` を 1 つ受け取り、その配下の `.toml` ファイルを再帰的に読み込みます。ただし、`shelf root` 直下の `config.toml` は書籍ファイルではなく設定ファイルとして扱います。直下以外の `config.toml` は誤配置としてエラーになります。
 
 ```text
 my-shelf/
