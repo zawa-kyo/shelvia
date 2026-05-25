@@ -2,21 +2,20 @@ package presentation
 
 import (
 	"bytes"
-	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"github.com/zawa-kyo/shelvia/internal/application"
 )
 
 func TestWrite(t *testing.T) {
 	t.Run("messageを表示する", func(t *testing.T) {
 		var out bytes.Buffer
+		output := application.Output{Message: "Validated 1 book, 1 config file."}
 
-		Write(&out, application.Output{Message: "Validated 1 book, 1 config file."})
+		Write(&out, output)
 
-		if out.String() != "Validated 1 book, 1 config file.\n" {
-			t.Fatalf("output = %q", out.String())
-		}
+		require.Equal(t, "Validated 1 book, 1 config file.\n", out.String())
 	})
 
 	t.Run("tableを表示する", func(t *testing.T) {
@@ -30,9 +29,7 @@ func TestWrite(t *testing.T) {
 
 		got := out.String()
 		for _, want := range []string{"read_date", "rating", "title", "Some Book"} {
-			if !strings.Contains(got, want) {
-				t.Fatalf("output = %q, want to contain %q", got, want)
-			}
+			require.Contains(t, got, want)
 		}
 	})
 }
@@ -40,12 +37,11 @@ func TestWrite(t *testing.T) {
 func TestWriteError(t *testing.T) {
 	t.Run("error messageを表示する", func(t *testing.T) {
 		var out bytes.Buffer
+		err := errString("Some Book.toml:5: unknown genre")
 
-		WriteError(&out, errString("Some Book.toml:5: unknown genre"))
+		WriteError(&out, err)
 
-		if out.String() != "Some Book.toml:5: unknown genre\n" {
-			t.Fatalf("output = %q", out.String())
-		}
+		require.Equal(t, "Some Book.toml:5: unknown genre\n", out.String())
 	})
 }
 
