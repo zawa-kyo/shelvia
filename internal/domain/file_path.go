@@ -1,18 +1,47 @@
 package domain
 
-import "strings"
+import (
+	"path"
+	"strings"
+)
 
 // Source file path used for diagnostics.
 type FilePath struct {
 	value string
 }
 
-// Creates a file path after trimming surrounding whitespace.
+// Creates a slash-separated shelf path for diagnostics.
 func NewFilePath(value string) FilePath {
-	return FilePath{value: strings.TrimSpace(value)}
+	return FilePath{value: cleanShelfPath(value)}
+}
+
+// Reports whether a source path is known.
+func (filePath FilePath) IsSpecified() bool {
+	return filePath.value != ""
+}
+
+// Returns the last path element.
+func (filePath FilePath) Base() string {
+	if !filePath.IsSpecified() {
+		return ""
+	}
+	return path.Base(filePath.value)
 }
 
 // Returns the normalized file path.
-func (path FilePath) String() string {
-	return path.value
+func (filePath FilePath) String() string {
+	return filePath.value
+}
+
+func cleanShelfPath(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return ""
+	}
+
+	cleaned := path.Clean(strings.ReplaceAll(trimmed, `\`, `/`))
+	if cleaned == "." {
+		return ""
+	}
+	return cleaned
 }

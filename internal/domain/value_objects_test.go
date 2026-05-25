@@ -172,9 +172,28 @@ func TestFilePath(t *testing.T) {
 		require.Equal(t, "books/example.toml", got.String())
 	})
 
+	t.Run("冗長な区切りは相対パスとして正規化する", func(t *testing.T) {
+		got := NewFilePath(`books//2024/../Some Book.toml`)
+
+		require.Equal(t, "books/Some Book.toml", got.String())
+	})
+
+	t.Run("Windows形式の区切りもshelf内の区切りへそろえる", func(t *testing.T) {
+		got := NewFilePath(`books\Some Book.toml`)
+
+		require.Equal(t, "books/Some Book.toml", got.String())
+	})
+
 	t.Run("ファイル名が分からない記録も扱える", func(t *testing.T) {
 		got := NewFilePath(" ")
 
 		require.Empty(t, got.String())
+		require.False(t, got.IsSpecified())
+	})
+
+	t.Run("ファイル名だけを取り出せる", func(t *testing.T) {
+		got := NewFilePath("books/Some Book.toml")
+
+		require.Equal(t, "Some Book.toml", got.Base())
 	})
 }

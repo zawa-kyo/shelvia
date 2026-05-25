@@ -54,28 +54,31 @@ func TestStoreQuery(t *testing.T) {
 }
 
 func TestStoreQueryRejectsUnsupportedWhere(t *testing.T) {
-	tests := []string{
-		"rating >= 80 order by title",
-		"select * from books",
-		"title in ('A')",
-		"lower(title) = 'a'",
-		"title = 'A'; drop table books",
-		"title = 'A' -- comment",
-		"unknown = 'A'",
-		"title = 123",
-		"genre = Novel",
-		`rating = "90"`,
-		`read_date = 2024`,
-		`read_date = "2024/01/02"`,
-		`rating like "9%"`,
-		`read_date like "2024%"`,
+	tests := []struct {
+		name  string
+		where string
+	}{
+		{name: "order byは受け付けない", where: "rating >= 80 order by title"},
+		{name: "select文は受け付けない", where: "select * from books"},
+		{name: "in演算子は受け付けない", where: "title in ('A')"},
+		{name: "関数呼び出しは受け付けない", where: "lower(title) = 'a'"},
+		{name: "複数文は受け付けない", where: "title = 'A'; drop table books"},
+		{name: "コメントは受け付けない", where: "title = 'A' -- comment"},
+		{name: "未対応の列は受け付けない", where: "unknown = 'A'"},
+		{name: "文字列列と数値は比較できない", where: "title = 123"},
+		{name: "文字列は引用符で囲む", where: "genre = Novel"},
+		{name: "評価と文字列は比較できない", where: `rating = "90"`},
+		{name: "読了日と数値は比較できない", where: `read_date = 2024`},
+		{name: "読了日はISO形式だけ受け付ける", where: `read_date = "2024/01/02"`},
+		{name: "評価にlikeは使えない", where: `rating like "9%"`},
+		{name: "読了日にlikeは使えない", where: `read_date like "2024%"`},
 	}
 
-	for _, where := range tests {
-		t.Run(where, func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 			books := testBooks(t)
 
-			_, err := Store{}.Query(books, where)
+			_, err := Store{}.Query(books, tt.where)
 
 			require.Error(t, err)
 			require.NotEmpty(t, strings.TrimSpace(err.Error()))
