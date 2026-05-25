@@ -1,0 +1,23 @@
+kind = "shelvia-config"
+
+[values]
+genres = [
+  "Novel",
+  "Technical",
+]
+
+publishers = [
+  "Example Publisher",
+]
+
+imprints = [
+  "Example Paperback",
+]
+
+[[values.editions]]
+name = "Paperback"
+imprint_required = true
+
+[[values.editions]]
+name = "Hardcover"
+imprint_required = false
