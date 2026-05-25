@@ -3,9 +3,10 @@ package localfs
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestRepositoryInitAndLoad(t *testing.T) {
@@ -13,37 +14,26 @@ func TestRepositoryInitAndLoad(t *testing.T) {
 		root := t.TempDir()
 		repository := Repository{}
 
-		if err := repository.Init(root); err != nil {
-			t.Fatalf("Init: %v", err)
-		}
+		err := repository.Init(root)
+		require.NoError(t, err)
+
 		data, err := repository.Load(root)
-		if err != nil {
-			t.Fatalf("Load: %v", err)
-		}
-		if len(data.Config.Genres) != 1 || data.Config.Genres[0] != "Novel" {
-			t.Fatalf("genres = %#v", data.Config.Genres)
-		}
-		if len(data.Books) != 1 {
-			t.Fatalf("books = %d, want 1", len(data.Books))
-		}
-		if data.Books[0].Path != "example.toml" {
-			t.Fatalf("book path = %q", data.Books[0].Path)
-		}
+
+		require.NoError(t, err)
+		require.Equal(t, []string{"Novel"}, data.Config.Genres)
+		require.Len(t, data.Books, 1)
+		require.Equal(t, "example.toml", data.Books[0].Path)
 	})
 
 	t.Run("既存ファイルは上書きしない", func(t *testing.T) {
 		root := t.TempDir()
-		if err := os.WriteFile(filepath.Join(root, "config.toml"), []byte("already here"), 0o644); err != nil {
-			t.Fatalf("WriteFile: %v", err)
-		}
+		configPath := filepath.Join(root, "config.toml")
+		require.NoError(t, os.WriteFile(configPath, []byte("already here"), 0o644))
 
 		err := Repository{}.Init(root)
-		if err == nil {
-			t.Fatal("expected error")
-		}
-		if !strings.Contains(err.Error(), "already exists") {
-			t.Fatalf("error = %q", err.Error())
-		}
+
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "already exists")
 	})
 }
 
@@ -53,22 +43,14 @@ func TestRepositoryCreateBook(t *testing.T) {
 		readDate := time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC)
 
 		path, err := Repository{}.CreateBook(root, "Some Book", readDate)
-		if err != nil {
-			t.Fatalf("CreateBook: %v", err)
-		}
-		if path != "Some Book.toml" {
-			t.Fatalf("path = %q", path)
-		}
+		require.NoError(t, err)
+
 		content, err := os.ReadFile(filepath.Join(root, path))
-		if err != nil {
-			t.Fatalf("ReadFile: %v", err)
-		}
-		if !strings.Contains(string(content), `title = "Some Book"`) {
-			t.Fatalf("content does not contain title: %s", content)
-		}
-		if !strings.Contains(string(content), "read_date = 2024-01-02") {
-			t.Fatalf("content does not contain read_date: %s", content)
-		}
+
+		require.NoError(t, err)
+		require.Equal(t, "Some Book.toml", path)
+		require.Contains(t, string(content), `title = "Some Book"`)
+		require.Contains(t, string(content), "read_date = 2024-01-02")
 	})
 
 	t.Run("Windowsでも危険なファイル名を拒否する", func(t *testing.T) {
@@ -77,9 +59,8 @@ func TestRepositoryCreateBook(t *testing.T) {
 		for _, title := range invalidTitles {
 			t.Run(title, func(t *testing.T) {
 				_, err := Repository{}.CreateBook(root, title, time.Now())
-				if err == nil {
-					t.Fatal("expected error")
-				}
+
+				require.Error(t, err)
 			})
 		}
 	})
@@ -88,80 +69,53 @@ func TestRepositoryCreateBook(t *testing.T) {
 func TestRepositoryLoad(t *testing.T) {
 	t.Run("直下以外のconfig.tomlは誤配置として拒否する", func(t *testing.T) {
 		root := t.TempDir()
-		if err := (Repository{}).Init(root); err != nil {
-			t.Fatalf("Init: %v", err)
-		}
+		require.NoError(t, (Repository{}).Init(root))
+
 		nested := filepath.Join(root, "nested")
-		if err := os.Mkdir(nested, 0o755); err != nil {
-			t.Fatalf("Mkdir: %v", err)
-		}
-		if err := os.WriteFile(filepath.Join(nested, "config.toml"), []byte(`kind = "shelvia-config"`), 0o644); err != nil {
-			t.Fatalf("WriteFile: %v", err)
-		}
+		require.NoError(t, os.Mkdir(nested, 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(nested, "config.toml"), []byte(`kind = "shelvia-config"`), 0o644))
 
 		_, err := Repository{}.Load(root)
-		if err == nil {
-			t.Fatal("expected error")
-		}
-		if !strings.Contains(err.Error(), "nested/config.toml: misplaced config.toml") {
-			t.Fatalf("error = %q", err.Error())
-		}
+
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "nested/config.toml: misplaced config.toml")
 	})
 
 	t.Run("TOMLを再帰的に読み込む", func(t *testing.T) {
 		root := t.TempDir()
-		if err := (Repository{}).Init(root); err != nil {
-			t.Fatalf("Init: %v", err)
-		}
+		require.NoError(t, (Repository{}).Init(root))
+
 		subdir := filepath.Join(root, "2024")
-		if err := os.Mkdir(subdir, 0o755); err != nil {
-			t.Fatalf("Mkdir: %v", err)
-		}
-		if err := os.WriteFile(filepath.Join(subdir, "Nested.toml"), []byte(validBookTOML("Nested")), 0o644); err != nil {
-			t.Fatalf("WriteFile: %v", err)
-		}
+		require.NoError(t, os.Mkdir(subdir, 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(subdir, "Nested.toml"), []byte(validBookTOML("Nested")), 0o644))
 
 		data, err := Repository{}.Load(root)
-		if err != nil {
-			t.Fatalf("Load: %v", err)
-		}
-		if len(data.Books) != 2 {
-			t.Fatalf("books = %d, want 2", len(data.Books))
-		}
+
+		require.NoError(t, err)
+
 		paths := map[string]struct{}{}
 		for _, book := range data.Books {
 			paths[book.Path] = struct{}{}
 		}
-		for _, want := range []string{"2024/Nested.toml", "example.toml"} {
-			if _, ok := paths[want]; !ok {
-				t.Fatalf("book paths = %#v, want %s", paths, want)
-			}
-		}
+
+		require.Len(t, data.Books, 2)
+		require.Contains(t, paths, "2024/Nested.toml")
+		require.Contains(t, paths, "example.toml")
 	})
 
 	t.Run("TOML parse errorはshelf rootからの相対パスで表示する", func(t *testing.T) {
 		root := t.TempDir()
-		if err := (Repository{}).Init(root); err != nil {
-			t.Fatalf("Init: %v", err)
-		}
+		require.NoError(t, (Repository{}).Init(root))
+
 		subdir := filepath.Join(root, "2024")
-		if err := os.Mkdir(subdir, 0o755); err != nil {
-			t.Fatalf("Mkdir: %v", err)
-		}
-		if err := os.WriteFile(filepath.Join(subdir, "Broken.toml"), []byte("title = "), 0o644); err != nil {
-			t.Fatalf("WriteFile: %v", err)
-		}
+		require.NoError(t, os.Mkdir(subdir, 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(subdir, "Broken.toml"), []byte("title = "), 0o644))
 
 		_, err := Repository{}.Load(root)
-		if err == nil {
-			t.Fatal("expected error")
-		}
-		if strings.Contains(err.Error(), root) {
-			t.Fatalf("error should not contain absolute root: %q", err.Error())
-		}
-		if !strings.Contains(err.Error(), "2024/Broken.toml") {
-			t.Fatalf("error = %q, want relative path", err.Error())
-		}
+
+		require.Error(t, err)
+		require.NotContains(t, err.Error(), root)
+		require.Contains(t, err.Error(), "2024/Broken.toml")
 	})
 }
 

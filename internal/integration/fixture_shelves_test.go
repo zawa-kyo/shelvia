@@ -3,9 +3,9 @@ package integration_test
 import (
 	"path/filepath"
 	"runtime"
-	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"github.com/zawa-kyo/shelvia/internal/adapter/localfs"
 	"github.com/zawa-kyo/shelvia/internal/adapter/queryengine"
 	"github.com/zawa-kyo/shelvia/internal/application"
@@ -14,17 +14,15 @@ import (
 func TestFixtureShelves(t *testing.T) {
 	t.Run("valid minimal shelfを検証できる", func(t *testing.T) {
 		service := application.NewService(localfs.Repository{}, queryengine.Store{})
-
-		output, err := service.Run(application.Command{
+		command := application.Command{
 			Kind:      application.Validate,
 			ShelfRoot: fixturePath(t, "valid", "minimal"),
-		})
-		if err != nil {
-			t.Fatalf("Validate: %v", err)
 		}
-		if output.Message != "Validated 2 books, 1 config file." {
-			t.Fatalf("message = %q", output.Message)
-		}
+
+		output, err := service.Run(command)
+
+		require.NoError(t, err)
+		require.Equal(t, "Validated 2 books, 1 config file.", output.Message)
 	})
 
 	tests := []struct {
@@ -39,17 +37,15 @@ func TestFixtureShelves(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name+"は検証エラーになる", func(t *testing.T) {
 			service := application.NewService(localfs.Repository{}, queryengine.Store{})
-
-			_, err := service.Run(application.Command{
+			command := application.Command{
 				Kind:      application.Validate,
 				ShelfRoot: fixturePath(t, "invalid", tt.name),
-			})
-			if err == nil {
-				t.Fatal("expected error")
 			}
-			if !strings.Contains(err.Error(), tt.want) {
-				t.Fatalf("error = %q, want to contain %q", err.Error(), tt.want)
-			}
+
+			_, err := service.Run(command)
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tt.want)
 		})
 	}
 }
@@ -57,9 +53,8 @@ func TestFixtureShelves(t *testing.T) {
 func fixturePath(t *testing.T, parts ...string) string {
 	t.Helper()
 	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller failed")
-	}
+	require.True(t, ok, "runtime.Caller failed")
+
 	root := filepath.Join(filepath.Dir(file), "..", "..", "fixtures", "shelves")
 	all := append([]string{root}, parts...)
 	return filepath.Clean(filepath.Join(all...))

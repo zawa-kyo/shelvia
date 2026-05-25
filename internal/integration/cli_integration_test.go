@@ -3,9 +3,9 @@ package integration_test
 import (
 	"bytes"
 	"path/filepath"
-	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"github.com/zawa-kyo/shelvia/internal/adapter/cli"
 	"github.com/zawa-kyo/shelvia/internal/adapter/localfs"
 	"github.com/zawa-kyo/shelvia/internal/adapter/queryengine"
@@ -18,37 +18,26 @@ func TestCLIRunWithRealAdapters(t *testing.T) {
 		service := application.NewService(localfs.Repository{}, queryengine.Store{})
 
 		code, stdout, stderr := runCLI(service, "init", root)
-		if code != 0 {
-			t.Fatalf("init code = %d, stderr = %q", code, stderr)
-		}
-		if !strings.Contains(stdout, "Initialized shelf.") {
-			t.Fatalf("init stdout = %q", stdout)
-		}
+
+		require.Equal(t, 0, code, "stderr = %q", stderr)
+		require.Contains(t, stdout, "Initialized shelf.")
 
 		t.Setenv("SHELVIA_DIR", root)
 		code, stdout, stderr = runCLI(service, "validate")
-		if code != 0 {
-			t.Fatalf("validate code = %d, stderr = %q", code, stderr)
-		}
-		if stdout != "Validated 1 book, 1 config file.\n" {
-			t.Fatalf("validate stdout = %q", stdout)
-		}
+
+		require.Equal(t, 0, code, "stderr = %q", stderr)
+		require.Equal(t, "Validated 1 book, 1 config file.\n", stdout)
 
 		code, stdout, stderr = runCLI(service, "list")
-		if code != 0 {
-			t.Fatalf("list code = %d, stderr = %q", code, stderr)
-		}
-		if !strings.Contains(stdout, "Example Book") || !strings.Contains(stdout, "read_date") {
-			t.Fatalf("list stdout = %q", stdout)
-		}
+
+		require.Equal(t, 0, code, "stderr = %q", stderr)
+		require.Contains(t, stdout, "Example Book")
+		require.Contains(t, stdout, "read_date")
 
 		code, stdout, stderr = runCLI(service, "query", "--where", `rating >= 80`)
-		if code != 0 {
-			t.Fatalf("query code = %d, stderr = %q", code, stderr)
-		}
-		if !strings.Contains(stdout, "Example Book") {
-			t.Fatalf("query stdout = %q", stdout)
-		}
+
+		require.Equal(t, 0, code, "stderr = %q", stderr)
+		require.Contains(t, stdout, "Example Book")
 	})
 }
 

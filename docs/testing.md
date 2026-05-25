@@ -4,6 +4,30 @@
 
 一般的なテスト戦略を取ります。Domain は単体テストで細かく確認し、それ以外は外部依存を port の裏で差し替えた結合テストで確認します。
 
+## Test Structure
+
+各テストケースは AAA パターンで構成します。Arrange で入力、fixture、fake、期待値を準備し、Act で対象の処理を実行し、Assert で結果を検証します。
+
+AAA の区切りはコメントではなく空行で表します。`// Arrange`、`// Act`、`// Assert` のようなコメントは書きません。テスト名と変数名だけで意図が読めるようにします。
+
+Assertion は `github.com/stretchr/testify/require` に揃えます。期待と違う時点でテストを止めたいケースが多いため、基本は `assert` ではなく `require` を使います。手書きの `if` と `t.Fatal` は、テスト用 fake の振る舞いを表す場合を除き避けます。
+
+```go
+func TestExample(t *testing.T) {
+	t.Run("必要な項目がそろっていれば本を記録できる", func(t *testing.T) {
+		draft := validBookDraft()
+		allowed := testAllowedValues(t)
+
+		book, err := NewBook(draft, allowed)
+
+		require.NoError(t, err)
+		require.Equal(t, "Some Book", book.Title().String())
+	})
+}
+```
+
+Act は原則として 1 つにします。CLI の一連のユーザーフローを確認する結合テストのように、複数の操作がシナリオそのものを表す場合は、操作ごとに小さな AAA を繰り返します。
+
 ## Domain Unit Tests
 
 Domain の単体テストでは、外部 I/O を使わずに純粋なルールを確認します。

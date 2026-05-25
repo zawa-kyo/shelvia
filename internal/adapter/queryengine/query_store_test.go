@@ -1,28 +1,27 @@
 package queryengine
 
 import (
-	"reflect"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"github.com/zawa-kyo/shelvia/internal/domain"
 )
 
 func TestStoreList(t *testing.T) {
 	t.Run("read_date descとtitle ascで表示列を返す", func(t *testing.T) {
-		table, err := Store{}.List(testBooks(t))
-		if err != nil {
-			t.Fatalf("List: %v", err)
-		}
+		books := testBooks(t)
 		wantRows := [][]string{
 			{"2024-01-02", "90", "Alpha", "Author A", "Novel", "Example Publisher"},
 			{"2024-01-02", "70", "Beta", "Author B", "Technical", "Example Publisher"},
 			{"2024-01-01", "80", "Gamma", "Author C", "Novel", "Example Publisher"},
 		}
-		if !reflect.DeepEqual(table.Rows, wantRows) {
-			t.Fatalf("rows = %#v, want %#v", table.Rows, wantRows)
-		}
+
+		table, err := Store{}.List(books)
+
+		require.NoError(t, err)
+		require.Equal(t, wantRows, table.Rows)
 	})
 }
 
@@ -43,14 +42,13 @@ func TestStoreQuery(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			table, err := Store{}.Query(testBooks(t), tt.where)
-			if err != nil {
-				t.Fatalf("Query: %v", err)
-			}
+			books := testBooks(t)
+
+			table, err := Store{}.Query(books, tt.where)
+
+			require.NoError(t, err)
 			got := titles(table.Rows)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Fatalf("titles = %#v, want %#v", got, tt.want)
-			}
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -75,13 +73,12 @@ func TestStoreQueryRejectsUnsupportedWhere(t *testing.T) {
 
 	for _, where := range tests {
 		t.Run(where, func(t *testing.T) {
-			_, err := Store{}.Query(testBooks(t), where)
-			if err == nil {
-				t.Fatal("expected error")
-			}
-			if strings.TrimSpace(err.Error()) == "" {
-				t.Fatal("error should not be blank")
-			}
+			books := testBooks(t)
+
+			_, err := Store{}.Query(books, where)
+
+			require.Error(t, err)
+			require.NotEmpty(t, strings.TrimSpace(err.Error()))
 		})
 	}
 }
@@ -96,9 +93,8 @@ func testBooks(t *testing.T) []domain.Book {
 			{Name: "Paperback", ImprintRequired: true},
 		},
 	})
-	if err != nil {
-		t.Fatalf("NewAllowedValues: %v", err)
-	}
+	require.NoError(t, err)
+
 	return []domain.Book{
 		mustBook(t, allowed, "Gamma", "Author C", 80, "2024-01-01", "Novel", "Translator"),
 		mustBook(t, allowed, "Beta", "Author B", 70, "2024-01-02", "Technical", ""),
@@ -109,9 +105,8 @@ func testBooks(t *testing.T) []domain.Book {
 func mustBook(t *testing.T, allowed domain.AllowedValues, title, author string, rating int, date string, genre string, translator string) domain.Book {
 	t.Helper()
 	readDate, err := time.Parse("2006-01-02", date)
-	if err != nil {
-		t.Fatalf("Parse: %v", err)
-	}
+	require.NoError(t, err)
+
 	book, err := domain.NewBook(domain.BookDraft{
 		Title:      title,
 		Author:     author,
@@ -123,9 +118,8 @@ func mustBook(t *testing.T, allowed domain.AllowedValues, title, author string, 
 		Imprint:    "Example Paperback",
 		Translator: translator,
 	}, allowed)
-	if err != nil {
-		t.Fatalf("NewBook: %v", err)
-	}
+	require.NoError(t, err)
+
 	return book
 }
 

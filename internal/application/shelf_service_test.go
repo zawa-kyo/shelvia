@@ -2,38 +2,33 @@ package application
 
 import (
 	"errors"
-	"reflect"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"github.com/zawa-kyo/shelvia/internal/domain"
 )
 
 func TestServiceRunValidate(t *testing.T) {
 	t.Run("shelfを読み込んで検証件数を返す", func(t *testing.T) {
 		service := NewService(fakeShelf{data: validShelfData()}, fakeQuery{})
+		command := Command{Kind: Validate, ShelfRoot: "shelf"}
 
-		output, err := service.Run(Command{Kind: Validate, ShelfRoot: "shelf"})
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if output.Message != "Validated 2 books, 1 config file." {
-			t.Fatalf("message = %q", output.Message)
-		}
+		output, err := service.Run(command)
+
+		require.NoError(t, err)
+		require.Equal(t, "Validated 2 books, 1 config file.", output.Message)
 	})
 
 	t.Run("domain validation errorにはファイルパスを付ける", func(t *testing.T) {
 		data := validShelfData()
 		data.Books[0].Genre = "Unknown"
 		service := NewService(fakeShelf{data: data}, fakeQuery{})
+		command := Command{Kind: Validate, ShelfRoot: "shelf"}
 
-		_, err := service.Run(Command{Kind: Validate, ShelfRoot: "shelf"})
-		if err == nil {
-			t.Fatal("expected error")
-		}
-		if got := err.Error(); got != "B.toml: genre: unknown genre: Unknown" {
-			t.Fatalf("error = %q", got)
-		}
+		_, err := service.Run(command)
+
+		require.EqualError(t, err, "B.toml: genre: unknown genre: Unknown")
 	})
 }
 
@@ -41,33 +36,25 @@ func TestServiceRunListAndQuery(t *testing.T) {
 	t.Run("listは検証済みbookをquery portへ渡す", func(t *testing.T) {
 		query := &recordingQuery{table: Table{Headers: []string{"title"}, Rows: [][]string{{"A"}}}}
 		service := NewService(fakeShelf{data: validShelfData()}, query)
+		command := Command{Kind: List, ShelfRoot: "shelf"}
 
-		output, err := service.Run(Command{Kind: List, ShelfRoot: "shelf"})
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if !reflect.DeepEqual(output.Table, query.table) {
-			t.Fatalf("table = %#v, want %#v", output.Table, query.table)
-		}
-		if query.listCount != 1 {
-			t.Fatalf("list calls = %d, want 1", query.listCount)
-		}
-		if len(query.books) != 2 {
-			t.Fatalf("books = %d, want 2", len(query.books))
-		}
+		output, err := service.Run(command)
+
+		require.NoError(t, err)
+		require.Equal(t, query.table, output.Table)
+		require.Equal(t, 1, query.listCount)
+		require.Len(t, query.books, 2)
 	})
 
 	t.Run("queryはwhere fragmentをquery portへ渡す", func(t *testing.T) {
 		query := &recordingQuery{table: Table{Headers: []string{"title"}, Rows: [][]string{{"B"}}}}
 		service := NewService(fakeShelf{data: validShelfData()}, query)
+		command := Command{Kind: Query, ShelfRoot: "shelf", Where: `rating >= 90`}
 
-		_, err := service.Run(Command{Kind: Query, ShelfRoot: "shelf", Where: `rating >= 90`})
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if query.where != `rating >= 90` {
-			t.Fatalf("where = %q", query.where)
-		}
+		_, err := service.Run(command)
+
+		require.NoError(t, err)
+		require.Equal(t, `rating >= 90`, query.where)
 	})
 }
 
@@ -75,31 +62,27 @@ func TestServiceRunInitAndNew(t *testing.T) {
 	t.Run("initはrepositoryへ委譲する", func(t *testing.T) {
 		shelf := &recordingShelf{newPath: "Some Book.toml"}
 		service := NewService(shelf, fakeQuery{})
+		command := Command{Kind: Init, ShelfRoot: "shelf"}
 
-		_, err := service.Run(Command{Kind: Init, ShelfRoot: "shelf"})
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if shelf.initRoot != "shelf" {
-			t.Fatalf("init root = %q", shelf.initRoot)
-		}
+		_, err := service.Run(command)
+
+		require.NoError(t, err)
+		require.Equal(t, "shelf", shelf.initRoot)
 	})
 
 	t.Run("newはrepositoryへ委譲して作成パスを返す", func(t *testing.T) {
 		readDate := time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC)
 		shelf := &recordingShelf{newPath: "Some Book.toml"}
 		service := NewService(shelf, fakeQuery{})
+		command := Command{Kind: New, ShelfRoot: "shelf", Title: "Some Book", ReadDate: readDate}
 
-		output, err := service.Run(Command{Kind: New, ShelfRoot: "shelf", Title: "Some Book", ReadDate: readDate})
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if output.Message != "Created Some Book.toml." {
-			t.Fatalf("message = %q", output.Message)
-		}
-		if shelf.newRoot != "shelf" || shelf.newTitle != "Some Book" || !shelf.newDate.Equal(readDate) {
-			t.Fatalf("new call = %#v", shelf)
-		}
+		output, err := service.Run(command)
+
+		require.NoError(t, err)
+		require.Equal(t, "Created Some Book.toml.", output.Message)
+		require.Equal(t, "shelf", shelf.newRoot)
+		require.Equal(t, "Some Book", shelf.newTitle)
+		require.True(t, shelf.newDate.Equal(readDate))
 	})
 }
 
