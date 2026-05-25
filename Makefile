@@ -3,7 +3,19 @@ SHELVIA ?= $(GO) run ./cmd/shelvia
 DEBUG_SHELF ?= fixtures/shelves/valid/minimal
 WHERE ?= rating >= 90
 
-.PHONY: debug-validate debug-list debug-query debug-query-novel debug
+.PHONY: test test-v test-pretty test-cover vet debug-validate debug-list debug-query debug-query-novel debug
+
+test:
+	@$(GO) test ./...
+
+test-v:
+	@$(GO) test -v ./...
+
+test-cover:
+	@$(GO) test ./... -cover
+
+vet:
+	@$(GO) vet ./...
 
 debug: debug-validate debug-list debug-query
 
