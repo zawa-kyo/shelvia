@@ -1,9 +1,10 @@
 package domain
 
 import (
-	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func testAllowedValues(t *testing.T) AllowedValues {
@@ -18,9 +19,7 @@ func testAllowedValues(t *testing.T) AllowedValues {
 			{Name: "Hardcover", ImprintRequired: false},
 		},
 	})
-	if err != nil {
-		t.Fatalf("読書記録に使う候補を準備できませんでした: %v", err)
-	}
+	require.NoError(t, err, "読書記録に使う候補を準備できませんでした")
 	return values
 }
 
@@ -41,46 +40,20 @@ func validBookDraft() BookDraft {
 func TestBookRecord(t *testing.T) {
 	t.Run("必要な項目がそろっていれば本を記録できる", func(t *testing.T) {
 		book, err := NewBook(validBookDraft(), testAllowedValues(t))
-		if err != nil {
-			t.Fatalf("本を記録できませんでした: %v", err)
-		}
+		require.NoError(t, err, "本を記録できませんでした")
 
-		if book.Title().String() != "Some Book" {
-			t.Fatalf("title = %q, want %q", book.Title().String(), "Some Book")
-		}
-		if book.Author().String() != "Some Author" {
-			t.Fatalf("author = %q, want %q", book.Author().String(), "Some Author")
-		}
-		if book.Rating().Int() != 90 {
-			t.Fatalf("評価 = %d, want %d", book.Rating().Int(), 90)
-		}
-		if book.ReadDate().String() != "2024-01-02" {
-			t.Fatalf("読了日 = %q, want %q", book.ReadDate().String(), "2024-01-02")
-		}
-		if book.Genre().String() != "Novel" {
-			t.Fatalf("ジャンル = %q, want %q", book.Genre().String(), "Novel")
-		}
-		if book.Publisher().String() != "Example Publisher" {
-			t.Fatalf("出版社 = %q, want %q", book.Publisher().String(), "Example Publisher")
-		}
-		if !book.Edition().IsSpecified() {
-			t.Fatal("判型が記録されていません")
-		}
-		if !book.Imprint().IsSpecified() {
-			t.Fatal("レーベルが記録されていません")
-		}
-		if book.Series().IsSpecified() {
-			t.Fatal("空のシリーズは未指定として扱われるべきです")
-		}
-		if book.Translator().IsSpecified() {
-			t.Fatal("空の訳者は未指定として扱われるべきです")
-		}
-		if book.Summary().IsSpecified() {
-			t.Fatal("空のひとことメモは未指定として扱われるべきです")
-		}
-		if book.Body().IsSpecified() {
-			t.Fatal("空の感想本文は未指定として扱われるべきです")
-		}
+		require.Equal(t, "Some Book", book.Title().String())
+		require.Equal(t, "Some Author", book.Author().String())
+		require.Equal(t, 90, book.Rating().Int())
+		require.Equal(t, "2024-01-02", book.ReadDate().String())
+		require.Equal(t, "Novel", book.Genre().String())
+		require.Equal(t, "Example Publisher", book.Publisher().String())
+		require.True(t, book.Edition().IsSpecified(), "判型が記録されていません")
+		require.True(t, book.Imprint().IsSpecified(), "レーベルが記録されていません")
+		require.False(t, book.Series().IsSpecified(), "空のシリーズは未指定として扱われるべきです")
+		require.False(t, book.Translator().IsSpecified(), "空の訳者は未指定として扱われるべきです")
+		require.False(t, book.Summary().IsSpecified(), "空のひとことメモは未指定として扱われるべきです")
+		require.False(t, book.Body().IsSpecified(), "空の感想本文は未指定として扱われるべきです")
 	})
 }
 
@@ -91,15 +64,9 @@ func TestEditionAndImprint(t *testing.T) {
 		draft.Imprint = ""
 
 		book, err := NewBook(draft, testAllowedValues(t))
-		if err != nil {
-			t.Fatalf("本を記録できませんでした: %v", err)
-		}
-		if !book.Edition().IsSpecified() {
-			t.Fatal("判型が記録されていません")
-		}
-		if book.Imprint().IsSpecified() {
-			t.Fatal("レーベルは未指定として扱われるべきです")
-		}
+		require.NoError(t, err, "本を記録できませんでした")
+		require.True(t, book.Edition().IsSpecified(), "判型が記録されていません")
+		require.False(t, book.Imprint().IsSpecified(), "レーベルは未指定として扱われるべきです")
 	})
 }
 
@@ -115,30 +82,14 @@ func TestOptionalFields(t *testing.T) {
 		draft.FilePath = ""
 
 		book, err := NewBook(draft, testAllowedValues(t))
-		if err != nil {
-			t.Fatalf("本を記録できませんでした: %v", err)
-		}
-		if book.Edition().IsSpecified() {
-			t.Fatal("判型は未指定として扱われるべきです")
-		}
-		if book.Imprint().IsSpecified() {
-			t.Fatal("レーベルは未指定として扱われるべきです")
-		}
-		if book.Series().IsSpecified() {
-			t.Fatal("シリーズは未指定として扱われるべきです")
-		}
-		if book.Translator().IsSpecified() {
-			t.Fatal("訳者は未指定として扱われるべきです")
-		}
-		if book.Summary().IsSpecified() {
-			t.Fatal("ひとことメモは未指定として扱われるべきです")
-		}
-		if book.Body().IsSpecified() {
-			t.Fatal("感想本文は未指定として扱われるべきです")
-		}
-		if book.FilePath().String() != "" {
-			t.Fatalf("file path = %q, want empty", book.FilePath().String())
-		}
+		require.NoError(t, err, "本を記録できませんでした")
+		require.False(t, book.Edition().IsSpecified(), "判型は未指定として扱われるべきです")
+		require.False(t, book.Imprint().IsSpecified(), "レーベルは未指定として扱われるべきです")
+		require.False(t, book.Series().IsSpecified(), "シリーズは未指定として扱われるべきです")
+		require.False(t, book.Translator().IsSpecified(), "訳者は未指定として扱われるべきです")
+		require.False(t, book.Summary().IsSpecified(), "ひとことメモは未指定として扱われるべきです")
+		require.False(t, book.Body().IsSpecified(), "感想本文は未指定として扱われるべきです")
+		require.Empty(t, book.FilePath().String())
 	})
 
 	t.Run("任意項目に書いた内容は読書記録に残る", func(t *testing.T) {
@@ -150,24 +101,12 @@ func TestOptionalFields(t *testing.T) {
 		draft.FilePath = "books/some-book.toml"
 
 		book, err := NewBook(draft, testAllowedValues(t))
-		if err != nil {
-			t.Fatalf("本を記録できませんでした: %v", err)
-		}
-		if book.Series().String() != "Series Name" {
-			t.Fatalf("シリーズ = %q, want %q", book.Series().String(), "Series Name")
-		}
-		if book.Translator().String() != "Some Translator" {
-			t.Fatalf("訳者 = %q, want %q", book.Translator().String(), "Some Translator")
-		}
-		if book.Summary().String() != "短い感想" {
-			t.Fatalf("ひとことメモ = %q, want %q", book.Summary().String(), "短い感想")
-		}
-		if book.Body().String() != "長い感想" {
-			t.Fatalf("感想本文 = %q, want %q", book.Body().String(), "長い感想")
-		}
-		if book.FilePath().String() != "books/some-book.toml" {
-			t.Fatalf("記録元ファイル = %q, want %q", book.FilePath().String(), "books/some-book.toml")
-		}
+		require.NoError(t, err, "本を記録できませんでした")
+		require.Equal(t, "Series Name", book.Series().String())
+		require.Equal(t, "Some Translator", book.Translator().String())
+		require.Equal(t, "短い感想", book.Summary().String())
+		require.Equal(t, "長い感想", book.Body().String())
+		require.Equal(t, "books/some-book.toml", book.FilePath().String())
 	})
 }
 
@@ -269,12 +208,8 @@ func TestInvalidBookRecord(t *testing.T) {
 			tt.mutate(&draft)
 
 			_, err := NewBook(draft, testAllowedValues(t))
-			if err == nil {
-				t.Fatal("記録できない本を受け入れてしまいました")
-			}
-			if !strings.Contains(err.Error(), tt.wantErr) {
-				t.Fatalf("error = %q, want to contain %q", err.Error(), tt.wantErr)
-			}
+			require.Error(t, err, "記録できない本を受け入れてしまいました")
+			require.Contains(t, err.Error(), tt.wantErr)
 		})
 	}
 }

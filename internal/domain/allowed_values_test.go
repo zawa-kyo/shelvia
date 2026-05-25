@@ -1,6 +1,10 @@
 package domain
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
 
 func TestAllowedValues(t *testing.T) {
 	t.Run("前後の空白は候補名に含めない", func(t *testing.T) {
@@ -13,66 +17,39 @@ func TestAllowedValues(t *testing.T) {
 				{Name: "  Hardcover  ", ImprintRequired: false},
 			},
 		})
-		if err != nil {
-			t.Fatalf("候補値を読み込めませんでした: %v", err)
-		}
+		require.NoError(t, err, "候補値を読み込めませんでした")
 
 		genre, err := NewGenre("Novel")
-		if err != nil {
-			t.Fatalf("ジャンル名を準備できませんでした: %v", err)
-		}
-		if !got.ContainsGenre(genre) {
-			t.Fatal("ジャンル候補として扱われていません")
-		}
+		require.NoError(t, err, "ジャンル名を準備できませんでした")
+		require.True(t, got.ContainsGenre(genre), "ジャンル候補として扱われていません")
 
 		publisher, err := NewPublisher("Example Publisher")
-		if err != nil {
-			t.Fatalf("出版社名を準備できませんでした: %v", err)
-		}
-		if !got.ContainsPublisher(publisher) {
-			t.Fatal("出版社候補として扱われていません")
-		}
+		require.NoError(t, err, "出版社名を準備できませんでした")
+		require.True(t, got.ContainsPublisher(publisher), "出版社候補として扱われていません")
 
 		imprint, err := NewImprint("Example Paperback")
-		if err != nil {
-			t.Fatalf("レーベル名を準備できませんでした: %v", err)
-		}
-		if !got.ContainsImprint(imprint) {
-			t.Fatal("レーベル候補として扱われていません")
-		}
+		require.NoError(t, err, "レーベル名を準備できませんでした")
+		require.True(t, got.ContainsImprint(imprint), "レーベル候補として扱われていません")
 
 		paperback, err := NewEdition("Paperback")
-		if err != nil {
-			t.Fatalf("判型を準備できませんでした: %v", err)
-		}
+		require.NoError(t, err, "判型を準備できませんでした")
+
 		paperbackRule, ok := got.FindEdition(paperback)
-		if !ok {
-			t.Fatal("判型候補として扱われていません")
-		}
-		if paperbackRule.Name().String() != "Paperback" {
-			t.Fatalf("判型 = %q, want %q", paperbackRule.Name().String(), "Paperback")
-		}
-		if !paperbackRule.ImprintRequired() {
-			t.Fatal("この判型ではレーベルが必須です")
-		}
+		require.True(t, ok, "判型候補として扱われていません")
+		require.Equal(t, "Paperback", paperbackRule.Name().String())
+		require.True(t, paperbackRule.ImprintRequired(), "この判型ではレーベルが必須です")
 
 		hardcover, err := NewEdition("Hardcover")
-		if err != nil {
-			t.Fatalf("判型を準備できませんでした: %v", err)
-		}
+		require.NoError(t, err, "判型を準備できませんでした")
+
 		hardcoverRule, ok := got.FindEdition(hardcover)
-		if !ok {
-			t.Fatal("判型候補として扱われていません")
-		}
-		if hardcoverRule.ImprintRequired() {
-			t.Fatal("この判型ではレーベルを必須にしない想定です")
-		}
+		require.True(t, ok, "判型候補として扱われていません")
+		require.False(t, hardcoverRule.ImprintRequired(), "この判型ではレーベルを必須にしない想定です")
 	})
 
 	t.Run("まだ使わない候補欄は空でもよい", func(t *testing.T) {
-		if _, err := NewAllowedValues(AllowedValuesInput{}); err != nil {
-			t.Fatalf("空の候補欄を読み込めませんでした: %v", err)
-		}
+		_, err := NewAllowedValues(AllowedValuesInput{})
+		require.NoError(t, err, "空の候補欄を読み込めませんでした")
 	})
 }
 
@@ -133,9 +110,8 @@ func TestInvalidAllowedValues(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if _, err := NewAllowedValues(tt.input); err == nil {
-				t.Fatal("候補として受け入れられてしまいました")
-			}
+			_, err := NewAllowedValues(tt.input)
+			require.Error(t, err, "候補として受け入れられてしまいました")
 		})
 	}
 }
