@@ -55,10 +55,24 @@ func TestRepositoryCreateBook(t *testing.T) {
 
 	t.Run("Windowsでも危険なファイル名を拒否する", func(t *testing.T) {
 		root := t.TempDir()
-		invalidTitles := []string{"", ".", "..", "CON", "COM1.txt", "a/b", `a\b`, "a:b", "a*", "name."}
-		for _, title := range invalidTitles {
-			t.Run(title, func(t *testing.T) {
-				_, err := Repository{}.CreateBook(root, title, time.Now())
+		invalidTitles := []struct {
+			name  string
+			title string
+		}{
+			{name: "空のタイトル", title: ""},
+			{name: "現在ディレクトリを表す名前", title: "."},
+			{name: "親ディレクトリを表す名前", title: ".."},
+			{name: "Windowsの予約名", title: "CON"},
+			{name: "拡張子付きのWindows予約名", title: "COM1.txt"},
+			{name: "スラッシュを含む名前", title: "a/b"},
+			{name: "バックスラッシュを含む名前", title: `a\b`},
+			{name: "コロンを含む名前", title: "a:b"},
+			{name: "アスタリスクを含む名前", title: "a*"},
+			{name: "末尾がドットの名前", title: "name."},
+		}
+		for _, tt := range invalidTitles {
+			t.Run(tt.name, func(t *testing.T) {
+				_, err := Repository{}.CreateBook(root, tt.title, time.Now())
 
 				require.Error(t, err)
 			})
