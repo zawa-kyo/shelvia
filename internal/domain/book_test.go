@@ -39,7 +39,11 @@ func validBookDraft() BookDraft {
 
 func TestBookRecord(t *testing.T) {
 	t.Run("必要な項目がそろっていれば本を記録できる", func(t *testing.T) {
-		book, err := NewBook(validBookDraft(), testAllowedValues(t))
+		draft := validBookDraft()
+		allowed := testAllowedValues(t)
+
+		book, err := NewBook(draft, allowed)
+
 		require.NoError(t, err, "本を記録できませんでした")
 
 		require.Equal(t, "Some Book", book.Title().String())
@@ -62,8 +66,10 @@ func TestEditionAndImprint(t *testing.T) {
 		draft := validBookDraft()
 		draft.Edition = "Hardcover"
 		draft.Imprint = ""
+		allowed := testAllowedValues(t)
 
-		book, err := NewBook(draft, testAllowedValues(t))
+		book, err := NewBook(draft, allowed)
+
 		require.NoError(t, err, "本を記録できませんでした")
 		require.True(t, book.Edition().IsSpecified(), "判型が記録されていません")
 		require.False(t, book.Imprint().IsSpecified(), "レーベルは未指定として扱われるべきです")
@@ -80,8 +86,10 @@ func TestOptionalFields(t *testing.T) {
 		draft.Summary = ""
 		draft.Body = ""
 		draft.FilePath = ""
+		allowed := testAllowedValues(t)
 
-		book, err := NewBook(draft, testAllowedValues(t))
+		book, err := NewBook(draft, allowed)
+
 		require.NoError(t, err, "本を記録できませんでした")
 		require.False(t, book.Edition().IsSpecified(), "判型は未指定として扱われるべきです")
 		require.False(t, book.Imprint().IsSpecified(), "レーベルは未指定として扱われるべきです")
@@ -99,8 +107,10 @@ func TestOptionalFields(t *testing.T) {
 		draft.Summary = "短い感想"
 		draft.Body = "長い感想"
 		draft.FilePath = "books/some-book.toml"
+		allowed := testAllowedValues(t)
 
-		book, err := NewBook(draft, testAllowedValues(t))
+		book, err := NewBook(draft, allowed)
+
 		require.NoError(t, err, "本を記録できませんでした")
 		require.Equal(t, "Series Name", book.Series().String())
 		require.Equal(t, "Some Translator", book.Translator().String())
@@ -206,8 +216,10 @@ func TestInvalidBookRecord(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			draft := validBookDraft()
 			tt.mutate(&draft)
+			allowed := testAllowedValues(t)
 
-			_, err := NewBook(draft, testAllowedValues(t))
+			_, err := NewBook(draft, allowed)
+
 			require.Error(t, err, "記録できない本を受け入れてしまいました")
 			require.Contains(t, err.Error(), tt.wantErr)
 		})

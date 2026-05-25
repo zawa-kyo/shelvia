@@ -8,7 +8,7 @@ import (
 
 func TestAllowedValues(t *testing.T) {
 	t.Run("前後の空白は候補名に含めない", func(t *testing.T) {
-		got, err := NewAllowedValues(AllowedValuesInput{
+		input := AllowedValuesInput{
 			Genres:     []string{"  Novel  "},
 			Publishers: []string{"  Example Publisher  "},
 			Imprints:   []string{"  Example Paperback  "},
@@ -16,31 +16,29 @@ func TestAllowedValues(t *testing.T) {
 				{Name: "  Paperback  ", ImprintRequired: true},
 				{Name: "  Hardcover  ", ImprintRequired: false},
 			},
-		})
-		require.NoError(t, err, "候補値を読み込めませんでした")
-
+		}
 		genre, err := NewGenre("Novel")
 		require.NoError(t, err, "ジャンル名を準備できませんでした")
-		require.True(t, got.ContainsGenre(genre), "ジャンル候補として扱われていません")
-
 		publisher, err := NewPublisher("Example Publisher")
 		require.NoError(t, err, "出版社名を準備できませんでした")
-		require.True(t, got.ContainsPublisher(publisher), "出版社候補として扱われていません")
-
 		imprint, err := NewImprint("Example Paperback")
 		require.NoError(t, err, "レーベル名を準備できませんでした")
-		require.True(t, got.ContainsImprint(imprint), "レーベル候補として扱われていません")
-
 		paperback, err := NewEdition("Paperback")
 		require.NoError(t, err, "判型を準備できませんでした")
+		hardcover, err := NewEdition("Hardcover")
+		require.NoError(t, err, "判型を準備できませんでした")
+
+		got, err := NewAllowedValues(input)
+
+		require.NoError(t, err, "候補値を読み込めませんでした")
+		require.True(t, got.ContainsGenre(genre), "ジャンル候補として扱われていません")
+		require.True(t, got.ContainsPublisher(publisher), "出版社候補として扱われていません")
+		require.True(t, got.ContainsImprint(imprint), "レーベル候補として扱われていません")
 
 		paperbackRule, ok := got.FindEdition(paperback)
 		require.True(t, ok, "判型候補として扱われていません")
 		require.Equal(t, "Paperback", paperbackRule.Name().String())
 		require.True(t, paperbackRule.ImprintRequired(), "この判型ではレーベルが必須です")
-
-		hardcover, err := NewEdition("Hardcover")
-		require.NoError(t, err, "判型を準備できませんでした")
 
 		hardcoverRule, ok := got.FindEdition(hardcover)
 		require.True(t, ok, "判型候補として扱われていません")
@@ -48,7 +46,10 @@ func TestAllowedValues(t *testing.T) {
 	})
 
 	t.Run("まだ使わない候補欄は空でもよい", func(t *testing.T) {
-		_, err := NewAllowedValues(AllowedValuesInput{})
+		input := AllowedValuesInput{}
+
+		_, err := NewAllowedValues(input)
+
 		require.NoError(t, err, "空の候補欄を読み込めませんでした")
 	})
 }
@@ -111,6 +112,7 @@ func TestInvalidAllowedValues(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := NewAllowedValues(tt.input)
+
 			require.Error(t, err, "候補として受け入れられてしまいました")
 		})
 	}
