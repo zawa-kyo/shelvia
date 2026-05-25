@@ -1,0 +1,17 @@
+title = "Example Book"
+author = "Example Author"
+rating = 80
+read_date = 2024-01-01
+
+genre = "Novel"
+edition = "Paperback"
+imprint = "Example Paperback"
+publisher = "Example Publisher"
+series = ""
+translator = ""
+
+[thoughts]
+summary = "A short note."
+body = """
+Longer thoughts can live here.
+"""
