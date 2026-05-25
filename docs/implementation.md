@@ -28,6 +28,7 @@ Go 実装では、Clean Architecture の境界を `internal/` 配下に置きま
 ├── internal/
 │   ├── domain/
 │   │   ├── book.go
+│   │   ├── book_draft.go
 │   │   ├── allowed_values.go
 │   │   ├── author.go
 │   │   ├── edition.go
@@ -80,7 +81,7 @@ Go 実装では、Clean Architecture の境界を `internal/` 配下に置きま
 各ディレクトリの責務は次のとおりです。
 
 - `cmd/shelvia`: 実行可能ファイルの入口。依存の組み立てだけを行い、業務ロジックを持たない
-- `internal/domain`: `Book` aggregate/entity、設定由来の許可値、値オブジェクト、純粋な検証ルール
+- `internal/domain`: `Book` aggregate root/entity、構築用 raw input、設定由来の許可値集合、値オブジェクト、純粋な検証ルール
 - `internal/application`: use case と port 定義。domain と port interface にだけ依存する
 - `internal/adapter/cli`: コマンドライン引数を application command に変換する
 - `internal/adapter/localfs`: OS のファイルシステム上にある shelf の discovery、`config.toml` 読み込み、テンプレート作成
@@ -141,7 +142,11 @@ Application は local filesystem や query engine の具象実装には依存し
 
 Domain レイヤーは、書籍と設定ファイル由来の許可値に関するルールを所有します。
 
-`Book` は書籍記録の aggregate root/entity として扱います。`Book` 自体は value object ではありません。`Title`、`Author`、`Rating`、`ReadDate`、`Genre`、`Publisher`、`Edition`、`Imprint`、`OptionalText`、`FilePath` などを value object として分け、各ファイルに不変条件を閉じ込めます。
+`Book` は書籍記録の aggregate root/entity として扱います。`Book` 自体は value object ではありません。`BookDraft` は `Book` を構築するための raw input であり、domain model として永続的な同一性を持ちません。
+
+`AllowedValues` は、`config.toml` の raw schema ではなく、domain が照合に使う許可値集合です。書籍ファイルの TOML schema や設定ファイルの TOML schema は adapter 側に閉じ込めます。
+
+`Title`、`Author`、`Rating`、`ReadDate`、`Genre`、`Publisher`、`Edition`、`Imprint`、`OptionalText`、`FilePath` などは value object として扱います。Domain の型は基本的に value object が多いため、`*_value.go` のような suffix は付けません。`value_objects/` のような技術分類 package も初回実装では作りません。package を切る必要が出た場合は、`internal/domain/book` のように一緒に使うドメイン概念単位で分けます。
 
 - 必須項目が存在する
 - `rating` は `0` から `100` の整数である
@@ -191,7 +196,9 @@ Some Book.toml:5: unknown genre "Novel"
 
 - `internal/domain` は package を細かく分けず、Go の 1 package として保つ。ファイルは DDD の概念単位に分ける
 - `Book` は value object ではなく aggregate root/entity として扱う。値の同一性だけで扱える型だけを value object にする
+- `book_draft.go` は構築用の raw input を表す。entity や value object と混同しない
 - `allowed_values.go` は設定ファイルの raw schema ではなく、domain が使う許可値集合を表す。TOML の形は adapter 側に閉じ込める
+- `value_objects/` package は初回実装では作らない。Go では package を技術分類ではなく一緒に使うドメイン概念で切る方が読みやすいため、必要になった場合は `internal/domain/book` のような概念単位の package を検討する
 - `internal/adapter/localfs` は OS ファイルシステム依存を表す名前として使う。shelf という業務語だけではなく、外部境界が local filesystem であることを明示する
 - `internal/adapter/queryengine` は application の query port を実装する adapter として命名する。内部で SQLite を使っても、application や domain に SQLite 名を漏らさない
 - `internal/adapter/presentation` は出力整形が増えた時点で `text` や `table` などに分ける余地があるが、初回リリースでは 1 package でよい
