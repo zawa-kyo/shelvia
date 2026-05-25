@@ -28,7 +28,7 @@ func TestWrite(t *testing.T) {
 		Write(&out, output)
 
 		got := out.String()
-		for _, want := range []string{"read_date", "rating", "title", "Some Book"} {
+		for _, want := range []string{"Shelvia books", "1 row(s)", "read_date", "rating", "title", "Some Book"} {
 			require.Contains(t, got, want)
 		}
 	})
