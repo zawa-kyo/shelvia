@@ -1,4 +1,5 @@
 GO ?= go
+GOTESTSUM ?= gotestsum
 SHELVIA ?= $(GO) run ./cmd/shelvia
 DEBUG_SHELF ?= fixtures/shelves/valid/minimal
 WHERE ?= rating >= 90
@@ -10,6 +11,10 @@ test:
 
 test-v:
 	@$(GO) test -v ./...
+
+test-pretty:
+	@command -v $(GOTESTSUM) >/dev/null 2>&1 || { echo "gotestsum is required. Install: go install gotest.tools/gotestsum@latest"; exit 1; }
+	@$(GOTESTSUM) --format testname -- ./...
 
 test-cover:
 	@$(GO) test ./... -cover
