@@ -1,10 +1,14 @@
 package domain
 
-import "testing"
+import (
+	"testing"
 
-func TestNewAllowedValues(t *testing.T) {
-	t.Run("設定値を正規化して検索できる", func(t *testing.T) {
-		got, err := NewAllowedValues(AllowedValuesInput{
+	"github.com/stretchr/testify/require"
+)
+
+func TestAllowedValues(t *testing.T) {
+	t.Run("前後の空白は候補名に含めない", func(t *testing.T) {
+		input := AllowedValuesInput{
 			Genres:     []string{"  Novel  "},
 			Publishers: []string{"  Example Publisher  "},
 			Imprints:   []string{"  Example Paperback  "},
@@ -12,113 +16,93 @@ func TestNewAllowedValues(t *testing.T) {
 				{Name: "  Paperback  ", ImprintRequired: true},
 				{Name: "  Hardcover  ", ImprintRequired: false},
 			},
-		})
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
 		}
-
 		genre, err := NewGenre("Novel")
-		if err != nil {
-			t.Fatalf("NewGenre: %v", err)
-		}
-		if !got.ContainsGenre(genre) {
-			t.Fatal("genre should be allowed")
-		}
-
+		require.NoError(t, err, "ジャンル名を準備できませんでした")
 		publisher, err := NewPublisher("Example Publisher")
-		if err != nil {
-			t.Fatalf("NewPublisher: %v", err)
-		}
-		if !got.ContainsPublisher(publisher) {
-			t.Fatal("publisher should be allowed")
-		}
-
+		require.NoError(t, err, "出版社名を準備できませんでした")
 		imprint, err := NewImprint("Example Paperback")
-		if err != nil {
-			t.Fatalf("NewImprint: %v", err)
-		}
-		if !got.ContainsImprint(imprint) {
-			t.Fatal("imprint should be allowed")
-		}
-
+		require.NoError(t, err, "レーベル名を準備できませんでした")
 		paperback, err := NewEdition("Paperback")
-		if err != nil {
-			t.Fatalf("NewEdition: %v", err)
-		}
-		paperbackRule, ok := got.FindEdition(paperback)
-		if !ok {
-			t.Fatal("paperback should be allowed")
-		}
-		if paperbackRule.Name().String() != "Paperback" {
-			t.Fatalf("edition = %q, want %q", paperbackRule.Name().String(), "Paperback")
-		}
-		if !paperbackRule.ImprintRequired() {
-			t.Fatal("paperback should require imprint")
-		}
-
+		require.NoError(t, err, "判型を準備できませんでした")
 		hardcover, err := NewEdition("Hardcover")
-		if err != nil {
-			t.Fatalf("NewEdition: %v", err)
-		}
+		require.NoError(t, err, "判型を準備できませんでした")
+
+		got, err := NewAllowedValues(input)
+
+		require.NoError(t, err, "候補値を読み込めませんでした")
+		require.True(t, got.ContainsGenre(genre), "ジャンル候補として扱われていません")
+		require.True(t, got.ContainsPublisher(publisher), "出版社候補として扱われていません")
+		require.True(t, got.ContainsImprint(imprint), "レーベル候補として扱われていません")
+
+		paperbackRule, ok := got.FindEdition(paperback)
+		require.True(t, ok, "判型候補として扱われていません")
+		require.Equal(t, "Paperback", paperbackRule.Name().String())
+		require.True(t, paperbackRule.ImprintRequired(), "この判型ではレーベルが必須です")
+
 		hardcoverRule, ok := got.FindEdition(hardcover)
-		if !ok {
-			t.Fatal("hardcover should be allowed")
-		}
-		if hardcoverRule.ImprintRequired() {
-			t.Fatal("hardcover should not require imprint")
-		}
+		require.True(t, ok, "判型候補として扱われていません")
+		require.False(t, hardcoverRule.ImprintRequired(), "この判型ではレーベルを必須にしない想定です")
+	})
+
+	t.Run("まだ使わない候補欄は空でもよい", func(t *testing.T) {
+		input := AllowedValuesInput{}
+
+		_, err := NewAllowedValues(input)
+
+		require.NoError(t, err, "空の候補欄を読み込めませんでした")
 	})
 }
 
-func TestNewAllowedValuesRejectsInvalidConfigValues(t *testing.T) {
+func TestInvalidAllowedValues(t *testing.T) {
 	tests := []struct {
 		name  string
 		input AllowedValuesInput
 	}{
 		{
-			name: "空文字のジャンルは拒否する",
+			name: "空のジャンル名は候補にできない",
 			input: AllowedValuesInput{
 				Genres: []string{"Novel", " "},
 			},
 		},
 		{
-			name: "重複した出版社は拒否する",
+			name: "同じ出版社名は候補に重複して書けない",
 			input: AllowedValuesInput{
 				Publishers: []string{"Example Publisher", "Example Publisher"},
 			},
 		},
 		{
-			name: "空文字の版は拒否する",
+			name: "空の判型名は候補にできない",
 			input: AllowedValuesInput{
 				Editions: []EditionInput{{Name: " "}},
 			},
 		},
 		{
-			name: "重複したジャンルは拒否する",
+			name: "空白違いだけのジャンル名は同じ候補として扱う",
 			input: AllowedValuesInput{
 				Genres: []string{"Novel", " Novel "},
 			},
 		},
 		{
-			name: "空文字の出版社は拒否する",
+			name: "空の出版社名は候補にできない",
 			input: AllowedValuesInput{
 				Publishers: []string{" "},
 			},
 		},
 		{
-			name: "空文字の印刷所は拒否する",
+			name: "空のレーベル名は候補にできない",
 			input: AllowedValuesInput{
 				Imprints: []string{" "},
 			},
 		},
 		{
-			name: "重複した印刷所は拒否する",
+			name: "空白違いだけのレーベル名は同じ候補として扱う",
 			input: AllowedValuesInput{
 				Imprints: []string{"Example Paperback", " Example Paperback "},
 			},
 		},
 		{
-			name: "重複した版は拒否する",
+			name: "空白違いだけの判型名は同じ候補として扱う",
 			input: AllowedValuesInput{
 				Editions: []EditionInput{{Name: "Paperback"}, {Name: " Paperback "}},
 			},
@@ -127,9 +111,9 @@ func TestNewAllowedValuesRejectsInvalidConfigValues(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if _, err := NewAllowedValues(tt.input); err == nil {
-				t.Fatal("expected error")
-			}
+			_, err := NewAllowedValues(tt.input)
+
+			require.Error(t, err, "候補として受け入れられてしまいました")
 		})
 	}
 }

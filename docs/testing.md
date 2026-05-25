@@ -15,6 +15,18 @@ Domain の単体テストでは、外部 I/O を使わずに純粋なルール�
 - 任意項目の空文字が未指定として扱われること
 - edition と imprint の関係
 
+Go のテストは package 単位で実行されるため、プロダクションコードとテストコードを必ず 1 ファイルずつ対応させる必要はありません。ただし、ドメイン層では tactical DDD の役割が読み取れるように、概念単位で対応が分かる粒度にします。
+
+初回実装では次の対応を基本にします。
+
+```text
+book.go / book_draft.go      -> book_test.go
+allowed_values.go            -> allowed_values_test.go
+author.go, rating.go, etc.   -> value_objects_test.go
+```
+
+`value_objects_test.go` が肥大化し、対象の value object を探しにくくなった場合は、`title_test.go`、`rating_test.go` のように value object ごとの test file へ分割します。最初から薄い test file を大量に作るより、読みやすさが落ちた時点で分割します。
+
 ## Integration Tests
 
 Application、CLI、presentation、local filesystem 境界は結合テストで確認します。インフラ層の依存先、特に query engine の DB は mock または fake adapter に差し替えます。
