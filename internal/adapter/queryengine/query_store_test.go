@@ -33,6 +33,7 @@ func TestStoreQuery(t *testing.T) {
 		want  []string
 	}{
 		{name: "数値比較で絞り込む", where: "rating >= 80", want: []string{"Alpha", "Gamma"}},
+		{name: "日付比較で絞り込む", where: `read_date = "2024-01-02"`, want: []string{"Alpha", "Beta"}},
 		{name: "文字列一致で絞り込む", where: `genre = "Technical"`, want: []string{"Beta"}},
 		{name: "likeで絞り込む", where: `title like "Al%"`, want: []string{"Alpha"}},
 		{name: "andとorと括弧を解釈する", where: `(genre = "Novel" and rating >= 90) or title = "Beta"`, want: []string{"Alpha", "Beta"}},
@@ -63,6 +64,13 @@ func TestStoreQueryRejectsUnsupportedWhere(t *testing.T) {
 		"title = 'A'; drop table books",
 		"title = 'A' -- comment",
 		"unknown = 'A'",
+		"title = 123",
+		"genre = Novel",
+		`rating = "90"`,
+		`read_date = 2024`,
+		`read_date = "2024/01/02"`,
+		`rating like "9%"`,
+		`read_date like "2024%"`,
 	}
 
 	for _, where := range tests {

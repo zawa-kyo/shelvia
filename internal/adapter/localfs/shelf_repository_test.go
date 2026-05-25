@@ -138,6 +138,31 @@ func TestRepositoryLoad(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("TOML parse errorはshelf rootからの相対パスで表示する", func(t *testing.T) {
+		root := t.TempDir()
+		if err := (Repository{}).Init(root); err != nil {
+			t.Fatalf("Init: %v", err)
+		}
+		subdir := filepath.Join(root, "2024")
+		if err := os.Mkdir(subdir, 0o755); err != nil {
+			t.Fatalf("Mkdir: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(subdir, "Broken.toml"), []byte("title = "), 0o644); err != nil {
+			t.Fatalf("WriteFile: %v", err)
+		}
+
+		_, err := Repository{}.Load(root)
+		if err == nil {
+			t.Fatal("expected error")
+		}
+		if strings.Contains(err.Error(), root) {
+			t.Fatalf("error should not contain absolute root: %q", err.Error())
+		}
+		if !strings.Contains(err.Error(), "2024/Broken.toml") {
+			t.Fatalf("error = %q, want relative path", err.Error())
+		}
+	})
 }
 
 func validBookTOML(title string) string {

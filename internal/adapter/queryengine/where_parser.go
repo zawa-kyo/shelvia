@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 )
 
@@ -242,6 +243,9 @@ func (parser *whereParser) parseComparison() (expr, error) {
 
 	op := parser.advance()
 	if op.kind == tokenIdent && op.text == "like" {
+		if !isTextColumn(column.text) {
+			return nil, fmt.Errorf("like is only supported for text columns")
+		}
 		return parser.parseBinary(column.text, "like")
 	}
 	if op.kind != tokenOperator {
@@ -252,17 +256,32 @@ func (parser *whereParser) parseComparison() (expr, error) {
 
 func (parser *whereParser) parseBinary(column, op string) (expr, error) {
 	value := parser.advance()
-	switch value.kind {
-	case tokenString:
-		return comparison{column: column, op: op, value: value.text}, nil
-	case tokenNumber:
+	switch column {
+	case "rating":
+		if value.kind != tokenNumber {
+			return nil, fmt.Errorf("rating comparison requires a number")
+		}
 		if _, err := strconv.Atoi(value.text); err != nil {
 			return nil, fmt.Errorf("invalid number in --where: %s", value.text)
 		}
 		return comparison{column: column, op: op, value: value.text}, nil
-	default:
-		return nil, fmt.Errorf("expected literal after operator")
+	case "read_date":
+		if value.kind != tokenString {
+			return nil, fmt.Errorf("read_date comparison requires a quoted YYYY-MM-DD date")
+		}
+		if _, err := time.Parse("2006-01-02", value.text); err != nil {
+			return nil, fmt.Errorf("read_date comparison requires a quoted YYYY-MM-DD date")
+		}
+		return comparison{column: column, op: op, value: value.text}, nil
 	}
+	if value.kind != tokenString {
+		return nil, fmt.Errorf("%s comparison requires a quoted string", column)
+	}
+	return comparison{column: column, op: op, value: value.text}, nil
+}
+
+func isTextColumn(column string) bool {
+	return column != "rating" && column != "read_date"
 }
 
 func (parser *whereParser) peek() token {
