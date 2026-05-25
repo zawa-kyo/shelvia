@@ -3,15 +3,44 @@ package presentation
 import (
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/lipgloss/table"
 	"github.com/zawa-kyo/shelvia/internal/application"
+)
+
+var (
+	accentColor = lipgloss.AdaptiveColor{Light: "25", Dark: "81"}
+	mutedColor  = lipgloss.AdaptiveColor{Light: "244", Dark: "245"}
+	headerColor = lipgloss.AdaptiveColor{Light: "238", Dark: "252"}
+	borderColor = lipgloss.AdaptiveColor{Light: "#B7D8BE", Dark: "#58745F"}
+
+	titleStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(accentColor)
+
+	summaryStyle = lipgloss.NewStyle().
+			Foreground(mutedColor)
+
+	borderStyle = lipgloss.NewStyle().
+			Foreground(borderColor)
+
+	headerStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(headerColor).
+			Align(lipgloss.Center).
+			Padding(0, 1)
+
+	cellStyle = lipgloss.NewStyle().
+			Padding(0, 1)
 )
 
 // Writes user-facing command output.
 func Write(out io.Writer, output application.Output) {
 	if output.Message != "" {
-		fmt.Fprintln(out, output.Message)
+		fmt.Fprintln(out, titleStyle.Render(output.Message))
 		return
 	}
 	if len(output.Table.Headers) == 0 {
@@ -28,52 +57,30 @@ func WriteError(out io.Writer, err error) {
 	fmt.Fprintln(out, err.Error())
 }
 
-func writeTable(out io.Writer, table application.Table) {
-	widths := columnWidths(table)
-	writeRow(out, table.Headers, widths)
-	writeSeparator(out, widths)
-	for _, row := range table.Rows {
-		writeRow(out, row, widths)
-	}
+func writeTable(out io.Writer, result application.Table) {
+	fmt.Fprintln(out, titleStyle.Render("Shelvia books"))
+	fmt.Fprintln(out, summaryStyle.Render(strconv.Itoa(len(result.Rows))+" row(s)"))
+	fmt.Fprintln(out)
+
+	rendered := table.New().
+		Border(lipgloss.RoundedBorder()).
+		BorderStyle(borderStyle).
+		Headers(result.Headers...).
+		Rows(normalizeRows(result.Rows)...).
+		StyleFunc(tableStyle)
+
+	fmt.Fprintln(out, rendered)
 }
 
-func columnWidths(table application.Table) []int {
-	widths := make([]int, len(table.Headers))
-	for i, header := range table.Headers {
-		widths[i] = len([]rune(header))
-	}
-	for _, row := range table.Rows {
-		for i := range widths {
-			value := ""
-			if i < len(row) {
-				value = printableCell(row[i])
-			}
-			if width := len([]rune(value)); width > widths[i] {
-				widths[i] = width
-			}
+func normalizeRows(rows [][]string) [][]string {
+	normalized := make([][]string, len(rows))
+	for i, row := range rows {
+		normalized[i] = make([]string, len(row))
+		for j, value := range row {
+			normalized[i][j] = printableCell(value)
 		}
 	}
-	return widths
-}
-
-func writeRow(out io.Writer, row []string, widths []int) {
-	cells := make([]string, len(widths))
-	for i := range widths {
-		value := ""
-		if i < len(row) {
-			value = printableCell(row[i])
-		}
-		cells[i] = padRight(value, widths[i])
-	}
-	fmt.Fprintln(out, strings.Join(cells, "  "))
-}
-
-func writeSeparator(out io.Writer, widths []int) {
-	parts := make([]string, len(widths))
-	for i, width := range widths {
-		parts[i] = strings.Repeat("-", width)
-	}
-	fmt.Fprintln(out, strings.Join(parts, "  "))
+	return normalized
 }
 
 func printableCell(value string) string {
@@ -94,10 +101,9 @@ func truncate(value string, limit int) string {
 	return string(runes[:limit-3]) + "..."
 }
 
-func padRight(value string, width int) string {
-	padding := width - len([]rune(value))
-	if padding <= 0 {
-		return value
+func tableStyle(row, col int) lipgloss.Style {
+	if row == table.HeaderRow {
+		return headerStyle
 	}
-	return value + strings.Repeat(" ", padding)
+	return cellStyle
 }
