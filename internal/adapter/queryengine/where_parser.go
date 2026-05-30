@@ -24,23 +24,37 @@ var allowedColumns = map[string]struct{}{
 var rejectedKeywords = map[string]struct{}{
 	"select": {}, "insert": {}, "update": {}, "delete": {},
 	"create": {}, "alter": {}, "drop": {},
-	"join": {}, "union": {}, "order": {}, "by": {},
+	"join": {}, "union": {},
 }
 
-func parseWhere(input string) (expr, error) {
+type queryFragment struct {
+	where expr
+	order orderSpec
+}
+
+type orderSpec struct {
+	column string
+	desc   bool
+}
+
+func parseQueryFragment(input string) (queryFragment, error) {
 	tokens, err := tokenize(input)
 	if err != nil {
-		return nil, err
+		return queryFragment{}, err
 	}
 	parser := whereParser{tokens: tokens}
 	parsed, err := parser.parseOr()
 	if err != nil {
-		return nil, err
+		return queryFragment{}, err
+	}
+	order, err := parser.parseOrder()
+	if err != nil {
+		return queryFragment{}, err
 	}
 	if parser.peek().kind != tokenEOF {
-		return nil, fmt.Errorf("unsupported where syntax near %q", parser.peek().text)
+		return queryFragment{}, fmt.Errorf("unsupported where syntax near %q", parser.peek().text)
 	}
-	return parsed, nil
+	return queryFragment{where: parsed, order: order}, nil
 }
 
 type tokenKind int
@@ -278,6 +292,32 @@ func (parser *whereParser) parseBinary(column, op string) (expr, error) {
 		return nil, fmt.Errorf("%s comparison requires a quoted string", column)
 	}
 	return comparison{column: column, op: op, value: value.text}, nil
+}
+
+func (parser *whereParser) parseOrder() (orderSpec, error) {
+	if !parser.matchIdent("order") {
+		return orderSpec{}, nil
+	}
+	if !parser.matchIdent("by") {
+		return orderSpec{}, fmt.Errorf("expected by after order")
+	}
+	column := parser.advance()
+	if column.kind != tokenIdent {
+		return orderSpec{}, fmt.Errorf("expected column name after order by")
+	}
+	if _, ok := allowedColumns[column.text]; !ok {
+		return orderSpec{}, fmt.Errorf("unsupported order by column: %s", column.text)
+	}
+
+	order := orderSpec{column: column.text}
+	if parser.matchIdent("asc") {
+		return order, nil
+	}
+	if parser.matchIdent("desc") {
+		order.desc = true
+		return order, nil
+	}
+	return order, nil
 }
 
 func isTextColumn(column string) bool {

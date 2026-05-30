@@ -1,10 +1,15 @@
 GO ?= go
-GOTESTSUM ?= gotestsum
+LOCAL_BIN := $(CURDIR)/.bin
+GOTESTSUM ?= $(LOCAL_BIN)/gotestsum
 SHELVIA ?= $(GO) run ./cmd/shelvia
-DEBUG_SHELF ?= fixtures/shelves/valid/minimal
+DEMO_SHELF ?= fixtures/shelves/valid/minimal
 WHERE ?= rating >= 90
 
-.PHONY: test test-v test-pretty test-cover vet debug-validate debug-list debug-query debug-query-novel debug
+.PHONY: install test test-v test-pretty test-cover vet demo-validate demo-list demo-query demo-sort demo-query-novel demo
+
+install:
+	@mkdir -p "$(LOCAL_BIN)"
+	@GOBIN="$(LOCAL_BIN)" $(GO) install gotest.tools/gotestsum
 
 test:
 	@$(GO) test ./...
@@ -13,7 +18,7 @@ test-v:
 	@$(GO) test -v ./...
 
 test-pretty:
-	@command -v $(GOTESTSUM) >/dev/null 2>&1 || { echo "gotestsum is required. Install: go install gotest.tools/gotestsum@latest"; exit 1; }
+	@command -v "$(GOTESTSUM)" >/dev/null 2>&1 || { echo "gotestsum is required. Run: make install-tools"; exit 1; }
 	@$(GOTESTSUM) --format testname -- ./...
 
 test-cover:
@@ -22,16 +27,19 @@ test-cover:
 vet:
 	@$(GO) vet ./...
 
-debug: debug-validate debug-list debug-query
+demo: demo-validate demo-list demo-query
 
-debug-validate:
-	@SHELVIA_DIR="$(DEBUG_SHELF)" $(SHELVIA) validate
+demo-validate:
+	@SHELVIA_DIR="$(DEMO_SHELF)" $(SHELVIA) validate
 
-debug-list:
-	@SHELVIA_DIR="$(DEBUG_SHELF)" $(SHELVIA) list
+demo-list:
+	@SHELVIA_DIR="$(DEMO_SHELF)" $(SHELVIA) list
 
-debug-query:
-	@SHELVIA_DIR="$(DEBUG_SHELF)" $(SHELVIA) query --where '$(WHERE)'
+demo-query:
+	@SHELVIA_DIR="$(DEMO_SHELF)" $(SHELVIA) query --where '$(WHERE)'
 
-debug-query-novel:
-	@SHELVIA_DIR="$(DEBUG_SHELF)" $(SHELVIA) query --where 'genre = "Novel"'
+demo-sort:
+	@SHELVIA_DIR="$(DEMO_SHELF)" $(SHELVIA) query --where 'rating >= 0 order by rating desc'
+
+demo-query-novel:
+	@SHELVIA_DIR="$(DEMO_SHELF)" $(SHELVIA) query --where 'genre = "Novel"'

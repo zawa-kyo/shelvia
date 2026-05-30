@@ -42,9 +42,9 @@ my-shelf/
 
 `list` は、検証済みの書籍を既定順で表示します。既定順は `read_date desc, title asc` です。初回リリースでは、表示列を `read_date`、`rating`、`title`、`author`、`genre`、`publisher` に固定します。
 
-`query --where` は、初回リリースでは SQL 風の条件を受け取ります。内部的には独自 DSL ではなく、検証済みデータから作った一時 SQLite ビューに対する制限付き SQL fragment として扱います。
+`query --where` は、SQL 風の条件を受け取ります。内部的には独自 DSL ではなく、検証済みデータから作った一時検索ビューに対する制限付き fragment として扱います。
 
-`query` の既定順と表示列は `list` と同じです。初回リリースの `--where` は絞り込み条件だけを受け取り、並び替えは受け取りません。
+`query` の既定順と表示列は `list` と同じです。`--where` の末尾には `order by <column> [asc|desc]` を 1 つ指定できます。方向を省略した場合は `asc` として扱います。
 
 対応するカラムは次のとおりです。
 
@@ -74,12 +74,12 @@ my-shelf/
 - `or`
 - `not`
 - `(...)`
+- `order by <column> [asc|desc]`
 
 文字列と日付はクォートされた文字列として指定します。日付は `YYYY-MM-DD` 形式で比較します。任意項目の空文字は未指定と同じ扱いになるため、検索ビュー上では `null` として扱います。
 
 初回リリースでは、次のような構文を拒否します。
 
-- `order by`
 - `select`、`insert`、`update`、`delete`
 - `create`、`alter`、`drop`
 - `join`、`union`

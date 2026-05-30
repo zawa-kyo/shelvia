@@ -172,7 +172,7 @@ Local filesystem adapter は、OS のファイルシステム上にある shelf 
 
 Query engine adapter は、検証済みの書籍からインメモリの検索ビューを作ります。初回実装では内部実装として SQLite を使ってよいですが、package 名には永続化方式やライブラリ名を出しません。SQLite は検索を助けるための一時ビューであり、永続化は行いません。
 
-`query --where` は、最終的な SQL を組み立てる前に、[CLI Behavior](./cli-behavior.md) で定義した範囲に収まるかを検証します。初回リリースでは保守的にし、未対応の SQL fragment は adapter 境界で拒否します。
+`query --where` は、検索ビューに適用する前に、[CLI Behavior](./cli-behavior.md) で定義した範囲に収まるかを検証します。対応範囲外の SQL 風 fragment は adapter 境界で拒否します。`order by` は単一カラムの並び替えだけを受け付け、複数カラム指定や `limit` などの追加句は扱いません。
 
 ### Presentation
 

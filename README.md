@@ -120,9 +120,10 @@ Search with conditions.
 ```bash
 shelvia query --where 'rating >= 90'
 shelvia query --where 'genre = "Novel" and publisher = "Example Publisher"'
+shelvia query --where 'rating >= 90 order by rating desc'
 ```
 
-`query --where` accepts filter conditions for `title`, `author`, `rating`, `read_date`, `genre`, `publisher`, `edition`, `imprint`, `series`, and `translator`. The first release does not accept `order by`; sorting and displayed columns are the same as `list`.
+`query --where` accepts filter conditions for `title`, `author`, `rating`, `read_date`, `genre`, `publisher`, `edition`, `imprint`, `series`, and `translator`. Add `order by <column> [asc|desc]` at the end to sort by one of the same columns. Without `order by`, sorting and displayed columns are the same as `list`.
 
 ## Data Format
 

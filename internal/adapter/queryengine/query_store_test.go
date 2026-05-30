@@ -38,6 +38,9 @@ func TestStoreQuery(t *testing.T) {
 		{name: "andとorと括弧を解釈する", where: `(genre = "Novel" and rating >= 90) or title = "Beta"`, want: []string{"Alpha", "Beta"}},
 		{name: "任意項目の未指定をnullとして扱う", where: "translator is null", want: []string{"Alpha", "Beta"}},
 		{name: "notを解釈する", where: `not genre = "Technical"`, want: []string{"Alpha", "Gamma"}},
+		{name: "タイトルを昇順で並び替える", where: "rating >= 70 order by title asc", want: []string{"Alpha", "Beta", "Gamma"}},
+		{name: "レートを降順で並び替える", where: "rating >= 70 order by rating desc", want: []string{"Alpha", "Gamma", "Beta"}},
+		{name: "order byのデフォルト値は昇順である", where: "rating >= 70 order by rating", want: []string{"Beta", "Gamma", "Alpha"}},
 	}
 
 	for _, tt := range tests {
@@ -58,7 +61,10 @@ func TestStoreQueryRejectsUnsupportedWhere(t *testing.T) {
 		name  string
 		where string
 	}{
-		{name: "order byは受け付けない", where: "rating >= 80 order by title"},
+		{name: "orderの後にbyが必要", where: "rating >= 80 order title"},
+		{name: "order byの列名が必要", where: "rating >= 80 order by"},
+		{name: "order byの未対応列は受け付けない", where: "rating >= 80 order by unknown"},
+		{name: "order byの後に余分な構文は受け付けない", where: "rating >= 80 order by title desc limit 1"},
 		{name: "select文は受け付けない", where: "select * from books"},
 		{name: "in演算子は受け付けない", where: "title in ('A')"},
 		{name: "関数呼び出しは受け付けない", where: "lower(title) = 'a'"},

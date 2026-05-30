@@ -22,7 +22,7 @@ func TestFixtureShelves(t *testing.T) {
 		output, err := service.Run(command)
 
 		require.NoError(t, err)
-		require.Equal(t, "Validated 2 books, 1 config file.", output.Message)
+		require.Equal(t, "Validated 5 books, 1 config file.", output.Message)
 	})
 
 	tests := []struct {

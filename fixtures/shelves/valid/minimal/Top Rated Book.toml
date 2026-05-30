@@ -1,0 +1,16 @@
+title = "Top Rated Book"
+author = "Example Author"
+rating = 98
+read_date = 2024-01-05
+
+genre = "Novel"
+edition = "Paperback"
+imprint = "Example Paperback"
+publisher = "Example Publisher"
+series = ""
+translator = ""
+
+[thoughts]
+summary = ""
+body = """
+"""
