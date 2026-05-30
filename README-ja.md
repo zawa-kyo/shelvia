@@ -121,9 +121,10 @@ shelvia list
 ```bash
 shelvia query --where 'rating >= 90'
 shelvia query --where 'genre = "Novel" and publisher = "Example Publisher"'
+shelvia query --where 'rating >= 90 order by rating desc'
 ```
 
-`query --where` は、`title`、`author`、`rating`、`read_date`、`genre`、`publisher`、`edition`、`imprint`、`series`、`translator` を対象にした絞り込み条件を受け取ります。初回リリースでは `order by` は指定できず、並び順と表示列は `list` と同じです。
+`query --where` は、`title`、`author`、`rating`、`read_date`、`genre`、`publisher`、`edition`、`imprint`、`series`、`translator` を対象にした絞り込み条件を受け取ります。`order by <column> [asc|desc]` を末尾に付けると、同じカラムで並び替えできます。`order by` を指定しない場合の並び順と表示列は `list` と同じです。
 
 ## データ形式
 

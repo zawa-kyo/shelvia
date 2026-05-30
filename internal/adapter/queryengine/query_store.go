@@ -23,13 +23,13 @@ func (Store) List(books []domain.Book) (application.Table, error) {
 
 // Filters books with a restricted SQL-like where fragment.
 func (Store) Query(books []domain.Book, where string) (application.Table, error) {
-	expr, err := parseWhere(where)
+	query, err := parseQueryFragment(where)
 	if err != nil {
 		return application.Table{}, err
 	}
 	filtered := make([]domain.Book, 0, len(books))
 	for _, book := range books {
-		ok, err := expr.eval(rowFromBook(book))
+		ok, err := query.where.eval(rowFromBook(book))
 		if err != nil {
 			return application.Table{}, err
 		}
@@ -37,19 +37,55 @@ func (Store) Query(books []domain.Book, where string) (application.Table, error)
 			filtered = append(filtered, book)
 		}
 	}
-	return tableFromBooks(sortBooks(filtered)), nil
+	return tableFromBooks(sortQueriedBooks(filtered, query.order)), nil
 }
 
 func sortBooks(books []domain.Book) []domain.Book {
 	sorted := append([]domain.Book(nil), books...)
 	sort.SliceStable(sorted, func(i, j int) bool {
-		left, right := sorted[i], sorted[j]
-		if !left.ReadDate().Time().Equal(right.ReadDate().Time()) {
-			return left.ReadDate().Time().After(right.ReadDate().Time())
-		}
-		return left.Title().String() < right.Title().String()
+		return compareDefault(sorted[i], sorted[j]) < 0
 	})
 	return sorted
+}
+
+func sortQueriedBooks(books []domain.Book, order orderSpec) []domain.Book {
+	if order.column == "" {
+		return sortBooks(books)
+	}
+	sorted := append([]domain.Book(nil), books...)
+	sort.SliceStable(sorted, func(i, j int) bool {
+		cmp := compareByColumn(sorted[i], sorted[j], order.column)
+		if cmp == 0 {
+			return compareDefault(sorted[i], sorted[j]) < 0
+		}
+		if order.desc {
+			return cmp > 0
+		}
+		return cmp < 0
+	})
+	return sorted
+}
+
+func compareDefault(left, right domain.Book) int {
+	if !left.ReadDate().Time().Equal(right.ReadDate().Time()) {
+		if left.ReadDate().Time().After(right.ReadDate().Time()) {
+			return -1
+		}
+		return 1
+	}
+	return strings.Compare(left.Title().String(), right.Title().String())
+}
+
+func compareByColumn(left, right domain.Book, column string) int {
+	leftRow, rightRow := rowFromBook(left), rowFromBook(right)
+	switch column {
+	case "rating":
+		return left.Rating().Int() - right.Rating().Int()
+	case "read_date":
+		return left.ReadDate().Time().Compare(right.ReadDate().Time())
+	default:
+		return strings.Compare(leftRow[column], rightRow[column])
+	}
 }
 
 func tableFromBooks(books []domain.Book) application.Table {
