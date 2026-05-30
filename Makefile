@@ -5,7 +5,7 @@ SHELVIA ?= $(GO) run ./cmd/shelvia
 DEBUG_SHELF ?= fixtures/shelves/valid/minimal
 WHERE ?= rating >= 90
 
-.PHONY: install-tools test test-v test-pretty test-cover vet debug-validate debug-list debug-query debug-query-novel debug
+.PHONY: install-tools test test-v test-pretty test-cover vet debug-validate debug-list debug-query debug-sort debug-query-novel debug
 
 install-tools:
 	@mkdir -p "$(LOCAL_BIN)"
@@ -37,6 +37,9 @@ debug-list:
 
 debug-query:
 	@SHELVIA_DIR="$(DEBUG_SHELF)" $(SHELVIA) query --where '$(WHERE)'
+
+debug-sort:
+	@SHELVIA_DIR="$(DEBUG_SHELF)" $(SHELVIA) query --where 'rating >= 0 order by rating desc'
 
 debug-query-novel:
 	@SHELVIA_DIR="$(DEBUG_SHELF)" $(SHELVIA) query --where 'genre = "Novel"'
