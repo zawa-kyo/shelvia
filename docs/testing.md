@@ -75,6 +75,6 @@ Fixture shelf は `fixtures/shelves/` 配下に置きます。`valid/` は正常
 
 ## E2E Tests
 
-E2E test は `scripts/e2e.sh` に置き、`make e2e` から実行します。これは Go の integration test を置き換えるものではなく、実際の CLI binary、環境変数、終了コード、標準出力を含む主要導線の smoke test として扱います。
+E2E test は `e2e/` に置き、`make e2e` から build tag `e2e` 付きで実行します。これは Go の integration test を置き換えるものではなく、実際の CLI binary、環境変数、終了コード、標準出力を含む主要導線の smoke test として扱います。
 
 E2E test では、一時ディレクトリに shelf を作成して `init`、`validate`、`list`、`query` を確認します。並び替えのように複数データが必要な確認では、`fixtures/shelves/valid/minimal` を使い、出力内のタイトル順を機械的に検証します。

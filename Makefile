@@ -28,7 +28,7 @@ vet:
 	@$(GO) vet ./...
 
 e2e:
-	@sh scripts/e2e.sh
+	@$(GO) test -tags=e2e ./e2e
 
 demo: demo-validate demo-list demo-query
 
