@@ -1,10 +1,15 @@
 GO ?= go
-GOTESTSUM ?= gotestsum
+LOCAL_BIN := $(CURDIR)/.bin
+GOTESTSUM ?= $(LOCAL_BIN)/gotestsum
 SHELVIA ?= $(GO) run ./cmd/shelvia
 DEBUG_SHELF ?= fixtures/shelves/valid/minimal
 WHERE ?= rating >= 90
 
-.PHONY: test test-v test-pretty test-cover vet debug-validate debug-list debug-query debug-query-novel debug
+.PHONY: install-tools test test-v test-pretty test-cover vet debug-validate debug-list debug-query debug-query-novel debug
+
+install-tools:
+	@mkdir -p "$(LOCAL_BIN)"
+	@GOBIN="$(LOCAL_BIN)" $(GO) install gotest.tools/gotestsum
 
 test:
 	@$(GO) test ./...
@@ -13,7 +18,7 @@ test-v:
 	@$(GO) test -v ./...
 
 test-pretty:
-	@command -v $(GOTESTSUM) >/dev/null 2>&1 || { echo "gotestsum is required. Install: go install gotest.tools/gotestsum@latest"; exit 1; }
+	@command -v "$(GOTESTSUM)" >/dev/null 2>&1 || { echo "gotestsum is required. Run: make install-tools"; exit 1; }
 	@$(GOTESTSUM) --format testname -- ./...
 
 test-cover:
