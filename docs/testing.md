@@ -72,3 +72,9 @@ Application、CLI、presentation、local filesystem 境界は結合テストで�
 DB そのものの挙動は query engine adapter の薄い adapter test に限定します。主な振る舞いは、DB に依存しない application-level integration test で検証します。
 
 Fixture shelf は `fixtures/shelves/` 配下に置きます。`valid/` は正常系、`invalid/` は失敗系に分け、各 fixture directory をそのまま `shelf root` として読み込ませます。
+
+## E2E Tests
+
+E2E test は `scripts/e2e.sh` に置き、`make e2e` から実行します。これは Go の integration test を置き換えるものではなく、実際の CLI binary、環境変数、終了コード、標準出力を含む主要導線の smoke test として扱います。
+
+E2E test では、一時ディレクトリに shelf を作成して `init`、`validate`、`list`、`query` を確認します。並び替えのように複数データが必要な確認では、`fixtures/shelves/valid/minimal` を使い、出力内のタイトル順を機械的に検証します。
