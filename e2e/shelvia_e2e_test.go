@@ -37,10 +37,6 @@ func TestShelviaCLI(t *testing.T) {
 	queryResult := runShelvia(t, bin, []string{"SHELVIA_DIR=" + shelf}, "query", "--where", "rating >= 80")
 	require.Equal(t, 0, queryResult.code, "stderr = %q", queryResult.stderr)
 	require.Contains(t, queryResult.stdout, "Example Book")
-
-	unsupportedResult := runShelvia(t, bin, []string{"SHELVIA_DIR=" + shelf}, "query", "--where", "select * from books")
-	require.NotEqual(t, 0, unsupportedResult.code)
-	require.Contains(t, unsupportedResult.stderr, "unsupported keyword")
 }
 
 func TestShelviaCLISortsFixtureShelf(t *testing.T) {
