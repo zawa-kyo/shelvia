@@ -13,6 +13,7 @@ install:
 
 test:
 	@$(GO) test ./...
+	@$(GO) test -tags=e2e ./e2e
 
 test-v:
 	@$(GO) test -v ./...
