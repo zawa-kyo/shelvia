@@ -25,6 +25,18 @@ func TestRepositoryInitAndLoad(t *testing.T) {
 		require.Equal(t, "example.toml", data.Books[0].Path)
 	})
 
+	t.Run("initが生成するconfig.tomlには編集の助けになるコメントを含む", func(t *testing.T) {
+		root := t.TempDir()
+
+		err := Repository{}.Init(root)
+		require.NoError(t, err)
+
+		content, err := os.ReadFile(filepath.Join(root, "config.toml"))
+		require.NoError(t, err)
+		require.Contains(t, string(content), "# Add the genres you use.")
+		require.Contains(t, string(content), "# Add imprint names if you use them. Leave this as [] if not needed yet.")
+	})
+
 	t.Run("既存ファイルは上書きしない", func(t *testing.T) {
 		root := t.TempDir()
 		configPath := filepath.Join(root, "config.toml")

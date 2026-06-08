@@ -40,6 +40,7 @@ shelvia init ./my-shelf
 
 `init` は、指定した `shelf root` に `config.toml` と `example.toml` を作成します。
 `example.toml` は、検証対象に含まれる書籍データのサンプルファイルです。
+どちらのファイルも最小構成で始まり、コメントで編集ポイントを案内します。
 
 ```text
 my-shelf/
@@ -82,24 +83,34 @@ Longer thoughts can live here.
 `config.toml` に候補値を追加します。`config.toml` は、ジャンル、出版社、判型、レーベル名などの候補値をまとめるための設定ファイルです。
 
 ```toml
+# List the values you want to use in this shelf.
 kind = "shelvia-config"
 
 [values]
+# Add the genres you use.
 genres = [
   "Novel",
 ]
 
+# Add the publishers you use.
 publishers = [
   "Example Publisher",
 ]
 
+# Add imprint names if you use them. Leave this as [] if not needed yet.
 imprints = [
   "Example Paperback",
 ]
 
+# Add the editions you use.
+# Set imprint_required = true when that edition always needs an imprint.
 [[values.editions]]
 name = "Paperback"
 imprint_required = true
+
+[[values.editions]]
+name = "Hardcover"
+imprint_required = false
 ```
 
 データを検証します。
@@ -154,28 +165,30 @@ shelvia query --where 'rating >= 90 order by rating desc'
 
 `config.toml` は、ジャンル、出版社、判型、レーベル名などの表記揺れを防ぐための設定ファイルです。Shelvia は `shelf root` 直下の `config.toml` から設定値を読み込みます。
 
-genre も `config.toml` で管理します。使わない候補値がある場合でも、対応する配列は作成し、空の配列を置いておきます。
+`init` が生成する `config.toml` は、`example.toml` がそのまま検証を通る最小構成です。そこから使う候補値だけを追加していきます。使わない候補値の配列は空のままでも構いません。
 
 ```toml
+# List the values you want to use in this shelf.
 kind = "shelvia-config"
 
 [values]
+# Add the genres you use.
 genres = [
   "Novel",
-  "Essay",
-  "Technical",
-  "Business",
 ]
 
+# Add the publishers you use.
 publishers = [
   "Example Publisher",
-  "Another Publisher",
 ]
 
+# Add imprint names if you use them. Leave this as [] if not needed yet.
 imprints = [
   "Example Paperback",
 ]
 
+# Add the editions you use.
+# Set imprint_required = true when that edition always needs an imprint.
 [[values.editions]]
 name = "Paperback"
 imprint_required = true

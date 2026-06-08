@@ -6,7 +6,7 @@
 
 Shelvia は 1 つの `shelf root` を受け取り、その配下の `.toml` ファイルを再帰的に読み込みます。`shelf root` 直下の `config.toml` だけは例外で、書籍ファイルではなく設定ファイルとして扱います。直下以外の `config.toml` は書籍として読まず、誤配置として明示的にエラーにします。
 
-`config.toml` には、ジャンル、出版社、判型、レーベル名などの許可値を列挙します。
+`config.toml` には、ジャンル、出版社、判型、レーベル名などの許可値を列挙します。`init` は、`example.toml` がそのまま検証を通る最小構成を生成し、編集の起点になるコメントも書き込みます。
 
 `example.toml` はテンプレートではなく、検証対象に含まれる実データの例として扱います。`init` 直後の `validate` が成功するように、`example.toml` と `config.toml` は互いに整合する内容で生成します。
 
@@ -34,7 +34,7 @@ my-shelf/
 - `shelvia list`
 - `shelvia query --where SQL_FRAGMENT`
 
-`init` は、指定された `shelf root` に `config.toml` と `example.toml` を作成します。`example.toml` は書籍ファイルとして扱われるため、生成直後から validation に通る内容にします。
+`init` は、指定された `shelf root` に `config.toml` と `example.toml` を作成します。`example.toml` は書籍ファイルとして扱われるため、生成直後から validation に通る内容にします。生成内容は最小構成にとどめ、追加で編集してほしい箇所は TOML コメントで案内します。
 
 `new` は、`<title>.toml` に書籍ファイルのテンプレートを作成します。
 
