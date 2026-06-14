@@ -1,0 +1,28 @@
+# List the values you want to use in this shelf.
+kind = "shelvia-config"
+
+[values]
+# Add the genres you use.
+genres = [
+  "Novel",
+]
+
+# Add the publishers you use.
+publishers = [
+  "Example Publisher",
+]
+
+# Add imprint names if you use them. Leave this as [] if not needed yet.
+imprints = [
+  "Example Paperback",
+]
+
+# Add the editions you use.
+# Set imprint_required = true when that edition always needs an imprint.
+[[values.editions]]
+name = "Paperback"
+imprint_required = true
+
+[[values.editions]]
+name = "Hardcover"
+imprint_required = false
