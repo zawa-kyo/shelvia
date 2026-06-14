@@ -52,26 +52,77 @@ func TestParse(t *testing.T) {
 		require.Equal(t, "new-shelf", command.ShelfRoot)
 	})
 
-	t.Run("newはタイトルと読了日を読む", func(t *testing.T) {
+	t.Run("initはPATH省略時にカレントディレクトリを使う", func(t *testing.T) {
 		t.Setenv("SHELVIA_DIR", "env-shelf")
-		args := []string{"new", "--read-date", "2024-01-02", "Some Book"}
+		args := []string{"init"}
 
 		command, err := Parse(args)
 
 		require.NoError(t, err)
-		require.Equal(t, application.New, command.Kind)
+		require.Equal(t, application.Init, command.Kind)
+		require.Equal(t, ".", command.ShelfRoot)
+	})
+
+	t.Run("addはタイトルと日付を読む", func(t *testing.T) {
+		t.Setenv("SHELVIA_DIR", "env-shelf")
+		args := []string{"add", "--date", "2024-01-02", "Some Book"}
+
+		command, err := Parse(args)
+
+		require.NoError(t, err)
+		require.Equal(t, application.Add, command.Kind)
 		require.Equal(t, "Some Book", command.Title)
 		require.Equal(t, "2024-01-02", command.ReadDate.Format("2006-01-02"))
 	})
 
-	t.Run("queryはwhere fragmentを読む", func(t *testing.T) {
+	t.Run("searchはwhere fragmentを読む", func(t *testing.T) {
 		t.Setenv("SHELVIA_DIR", "env-shelf")
-		args := []string{"query", "--where", "rating >= 90"}
+		args := []string{"search", "rating >= 90"}
 
 		command, err := Parse(args)
 
 		require.NoError(t, err)
-		require.Equal(t, application.Query, command.Kind)
+		require.Equal(t, application.Search, command.Kind)
 		require.Equal(t, "rating >= 90", command.Where)
+	})
+
+	t.Run("showはタイトルを読む", func(t *testing.T) {
+		t.Setenv("SHELVIA_DIR", "env-shelf")
+		args := []string{"show", "Some Book"}
+
+		command, err := Parse(args)
+
+		require.NoError(t, err)
+		require.Equal(t, application.Show, command.Kind)
+		require.Equal(t, "Some Book", command.Title)
+	})
+
+	t.Run("pathはタイトルを読む", func(t *testing.T) {
+		t.Setenv("SHELVIA_DIR", "env-shelf")
+		args := []string{"path", "Some Book"}
+
+		command, err := Parse(args)
+
+		require.NoError(t, err)
+		require.Equal(t, application.Path, command.Kind)
+		require.Equal(t, "Some Book", command.Title)
+	})
+
+	t.Run("newはサポートしない", func(t *testing.T) {
+		t.Setenv("SHELVIA_DIR", "env-shelf")
+		args := []string{"new", "Some Book", "--read-date", "2024-01-02"}
+
+		_, err := Parse(args)
+
+		require.Error(t, err)
+	})
+
+	t.Run("queryはサポートしない", func(t *testing.T) {
+		t.Setenv("SHELVIA_DIR", "env-shelf")
+		args := []string{"query", "--where", "rating >= 90"}
+
+		_, err := Parse(args)
+
+		require.Error(t, err)
 	})
 }

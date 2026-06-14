@@ -29,12 +29,16 @@ func Parse(args []string) (application.Command, error) {
 
 	switch rest[0] {
 	case "init":
-		if len(rest) != 2 {
-			return application.Command{}, fmt.Errorf("usage: shelvia init PATH")
+		if len(rest) > 2 {
+			return application.Command{}, fmt.Errorf("usage: shelvia init [PATH]")
 		}
-		return application.Command{Kind: application.Init, ShelfRoot: rest[1]}, nil
-	case "new":
-		command, err := parseNew(rest[1:])
+		root := "."
+		if len(rest) == 2 {
+			root = rest[1]
+		}
+		return application.Command{Kind: application.Init, ShelfRoot: root}, nil
+	case "add":
+		command, err := parseAdd(rest[1:])
 		if err != nil {
 			return application.Command{}, err
 		}
@@ -50,66 +54,58 @@ func Parse(args []string) (application.Command, error) {
 			return application.Command{}, fmt.Errorf("usage: shelvia list")
 		}
 		return requireRoot(application.Command{Kind: application.List, ShelfRoot: resolveRoot(*shelf)})
-	case "query":
-		command, err := parseQuery(rest[1:])
-		if err != nil {
-			return application.Command{}, err
+	case "search":
+		if len(rest) != 2 {
+			return application.Command{}, fmt.Errorf("usage: shelvia search SQL_FRAGMENT")
 		}
-		command.ShelfRoot = resolveRoot(*shelf)
-		return requireRoot(command)
+		return requireRoot(application.Command{Kind: application.Search, ShelfRoot: resolveRoot(*shelf), Where: rest[1]})
+	case "show":
+		if len(rest) != 2 {
+			return application.Command{}, fmt.Errorf("usage: shelvia show TITLE")
+		}
+		return requireRoot(application.Command{Kind: application.Show, ShelfRoot: resolveRoot(*shelf), Title: rest[1]})
+	case "path":
+		if len(rest) != 2 {
+			return application.Command{}, fmt.Errorf("usage: shelvia path TITLE")
+		}
+		return requireRoot(application.Command{Kind: application.Path, ShelfRoot: resolveRoot(*shelf), Title: rest[1]})
 	default:
 		return application.Command{}, fmt.Errorf("unknown command: %s", rest[0])
 	}
 }
 
-func parseNew(args []string) (application.Command, error) {
+func parseAdd(args []string) (application.Command, error) {
 	var title string
 	var readDate string
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
-		case "--read-date":
+		case "--date":
 			if i+1 >= len(args) {
-				return application.Command{}, fmt.Errorf("new requires --read-date")
+				return application.Command{}, fmt.Errorf("add requires --date")
 			}
 			readDate = args[i+1]
 			i++
 		default:
 			if strings.HasPrefix(args[i], "-") {
-				return application.Command{}, fmt.Errorf("unknown new option: %s", args[i])
+				return application.Command{}, fmt.Errorf("unknown add option: %s", args[i])
 			}
 			if title != "" {
-				return application.Command{}, fmt.Errorf("usage: shelvia new TITLE --read-date YYYY-MM-DD")
+				return application.Command{}, fmt.Errorf("usage: shelvia add TITLE --date YYYY-MM-DD")
 			}
 			title = args[i]
 		}
 	}
 	if title == "" {
-		return application.Command{}, fmt.Errorf("usage: shelvia new TITLE --read-date YYYY-MM-DD")
+		return application.Command{}, fmt.Errorf("usage: shelvia add TITLE --date YYYY-MM-DD")
 	}
 	if readDate == "" {
-		return application.Command{}, fmt.Errorf("new requires --read-date")
+		return application.Command{}, fmt.Errorf("add requires --date")
 	}
 	date, err := time.Parse("2006-01-02", readDate)
 	if err != nil {
-		return application.Command{}, fmt.Errorf("invalid --read-date: %s", readDate)
+		return application.Command{}, fmt.Errorf("invalid --date: %s", readDate)
 	}
-	return application.Command{Kind: application.New, Title: title, ReadDate: date}, nil
-}
-
-func parseQuery(args []string) (application.Command, error) {
-	flags := flag.NewFlagSet("query", flag.ContinueOnError)
-	flags.SetOutput(io.Discard)
-	where := flags.String("where", "", "SQL-like where clause")
-	if err := flags.Parse(args); err != nil {
-		return application.Command{}, err
-	}
-	if *where == "" {
-		return application.Command{}, fmt.Errorf("query requires --where")
-	}
-	if len(flags.Args()) != 0 {
-		return application.Command{}, fmt.Errorf("usage: shelvia query --where SQL_FRAGMENT")
-	}
-	return application.Command{Kind: application.Query, Where: *where}, nil
+	return application.Command{Kind: application.Add, Title: title, ReadDate: date}, nil
 }
 
 func resolveRoot(explicit string) string {

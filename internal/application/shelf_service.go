@@ -2,6 +2,7 @@ package application
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/zawa-kyo/shelvia/internal/domain"
 )
@@ -25,7 +26,7 @@ func (service Service) Run(command Command) (Output, error) {
 			return Output{}, err
 		}
 		return Output{Message: "Initialized shelf."}, nil
-	case New:
+	case Add:
 		path, err := service.shelf.CreateBook(command.ShelfRoot, command.Title, command.ReadDate)
 		if err != nil {
 			return Output{}, err
@@ -44,13 +45,33 @@ func (service Service) Run(command Command) (Output, error) {
 		}
 		table, err := service.query.List(books)
 		return Output{Table: table}, err
-	case Query:
+	case Search:
 		books, err := service.loadBooks(command.ShelfRoot)
 		if err != nil {
 			return Output{}, err
 		}
 		table, err := service.query.Query(books, command.Where)
 		return Output{Table: table}, err
+	case Show:
+		books, err := service.loadBooks(command.ShelfRoot)
+		if err != nil {
+			return Output{}, err
+		}
+		book, err := findBookByTitle(books, command.Title)
+		if err != nil {
+			return Output{}, err
+		}
+		return Output{Table: bookDetailsTable(book)}, nil
+	case Path:
+		books, err := service.loadBooks(command.ShelfRoot)
+		if err != nil {
+			return Output{}, err
+		}
+		book, err := findBookByTitle(books, command.Title)
+		if err != nil {
+			return Output{}, err
+		}
+		return Output{Message: book.FilePath().String()}, nil
 	default:
 		return Output{}, fmt.Errorf("unknown command")
 	}
@@ -116,4 +137,55 @@ func plural(count int) string {
 		return ""
 	}
 	return "s"
+}
+
+func findBookByTitle(books []domain.Book, title string) (domain.Book, error) {
+	matches := make([]domain.Book, 0, 1)
+	for _, book := range books {
+		if book.Title().String() == title {
+			matches = append(matches, book)
+		}
+	}
+	if len(matches) == 0 {
+		return domain.Book{}, fmt.Errorf("book title not found: %s", title)
+	}
+	if len(matches) > 1 {
+		paths := make([]string, len(matches))
+		for i, book := range matches {
+			paths[i] = book.FilePath().String()
+		}
+		return domain.Book{}, fmt.Errorf("book title is ambiguous: %s (%s)", title, strings.Join(paths, ", "))
+	}
+	return matches[0], nil
+}
+
+func bookDetailsTable(book domain.Book) Table {
+	rows := [][]string{
+		{"path", book.FilePath().String()},
+		{"title", book.Title().String()},
+		{"author", book.Author().String()},
+		{"rating", fmt.Sprintf("%d", book.Rating().Int())},
+		{"read_date", book.ReadDate().String()},
+		{"genre", book.Genre().String()},
+		{"publisher", book.Publisher().String()},
+	}
+	if value := book.Edition().String(); value != "" {
+		rows = append(rows, []string{"edition", value})
+	}
+	if value := book.Imprint().String(); value != "" {
+		rows = append(rows, []string{"imprint", value})
+	}
+	if value := book.Series().String(); value != "" {
+		rows = append(rows, []string{"series", value})
+	}
+	if value := book.Translator().String(); value != "" {
+		rows = append(rows, []string{"translator", value})
+	}
+	if value := book.Summary().String(); value != "" {
+		rows = append(rows, []string{"summary", value})
+	}
+	if value := book.Body().String(); value != "" {
+		rows = append(rows, []string{"body", value})
+	}
+	return Table{Headers: []string{"field", "value"}, Rows: rows}
 }

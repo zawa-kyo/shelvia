@@ -52,7 +52,7 @@ func parseQueryFragment(input string) (queryFragment, error) {
 		return queryFragment{}, err
 	}
 	if parser.peek().kind != tokenEOF {
-		return queryFragment{}, fmt.Errorf("unsupported where syntax near %q", parser.peek().text)
+		return queryFragment{}, fmt.Errorf("unsupported search condition near %q", parser.peek().text)
 	}
 	return queryFragment{where: parsed, order: order}, nil
 }
@@ -83,10 +83,10 @@ func tokenize(input string) ([]token, error) {
 			continue
 		}
 		if input[i] == '-' && i+1 < len(input) && input[i+1] == '-' {
-			return nil, fmt.Errorf("comments are not supported in --where")
+			return nil, fmt.Errorf("comments are not supported in search condition")
 		}
 		if input[i] == ';' {
-			return nil, fmt.Errorf("multiple statements are not supported in --where")
+			return nil, fmt.Errorf("multiple statements are not supported in search condition")
 		}
 		if input[i] == '(' {
 			tokens = append(tokens, token{kind: tokenLParen, text: "("})
@@ -135,12 +135,12 @@ func tokenize(input string) ([]token, error) {
 			}
 			text := strings.ToLower(input[start:i])
 			if _, rejected := rejectedKeywords[text]; rejected {
-				return nil, fmt.Errorf("unsupported keyword in --where: %s", text)
+				return nil, fmt.Errorf("unsupported keyword in search condition: %s", text)
 			}
 			tokens = append(tokens, token{kind: tokenIdent, text: text})
 			continue
 		}
-		return nil, fmt.Errorf("unsupported character in --where: %q", input[i])
+		return nil, fmt.Errorf("unsupported character in search condition: %q", input[i])
 	}
 	tokens = append(tokens, token{kind: tokenEOF})
 	return tokens, nil
@@ -160,7 +160,7 @@ func readString(input string, start int) (string, int, error) {
 		}
 		builder.WriteByte(input[i])
 	}
-	return "", 0, fmt.Errorf("unterminated string in --where")
+	return "", 0, fmt.Errorf("unterminated string in search condition")
 }
 
 func isIdentStart(r rune) bool {
@@ -224,10 +224,10 @@ func (parser *whereParser) parsePrimary() (expr, error) {
 			return nil, err
 		}
 		if !parser.match(tokenRParen) {
-			return nil, fmt.Errorf("missing closing parenthesis in --where")
+			return nil, fmt.Errorf("missing closing parenthesis in search condition")
 		}
 		if parser.peek().kind == tokenLParen {
-			return nil, fmt.Errorf("function calls are not supported in --where")
+			return nil, fmt.Errorf("function calls are not supported in search condition")
 		}
 		return inner, nil
 	}
@@ -237,10 +237,10 @@ func (parser *whereParser) parsePrimary() (expr, error) {
 func (parser *whereParser) parseComparison() (expr, error) {
 	column := parser.advance()
 	if column.kind != tokenIdent {
-		return nil, fmt.Errorf("expected column name in --where")
+		return nil, fmt.Errorf("expected column name in search condition")
 	}
 	if _, ok := allowedColumns[column.text]; !ok {
-		return nil, fmt.Errorf("unsupported column in --where: %s", column.text)
+		return nil, fmt.Errorf("unsupported column in search condition: %s", column.text)
 	}
 	if parser.matchIdent("is") {
 		if parser.matchIdent("not") {
@@ -276,7 +276,7 @@ func (parser *whereParser) parseBinary(column, op string) (expr, error) {
 			return nil, fmt.Errorf("rating comparison requires a number")
 		}
 		if _, err := strconv.Atoi(value.text); err != nil {
-			return nil, fmt.Errorf("invalid number in --where: %s", value.text)
+			return nil, fmt.Errorf("invalid number in search condition: %s", value.text)
 		}
 		return comparison{column: column, op: op, value: value.text}, nil
 	case "read_date":

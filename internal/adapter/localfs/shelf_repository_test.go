@@ -10,6 +10,16 @@ import (
 )
 
 func TestRepositoryInitAndLoad(t *testing.T) {
+	t.Run("存在しないディレクトリを作成して初期化する", func(t *testing.T) {
+		root := filepath.Join(t.TempDir(), "new-shelf")
+
+		err := Repository{}.Init(root)
+
+		require.NoError(t, err)
+		require.FileExists(t, filepath.Join(root, "config.toml"))
+		require.FileExists(t, filepath.Join(root, "example.toml"))
+	})
+
 	t.Run("init直後のshelfは検証可能なデータとして読み込める", func(t *testing.T) {
 		root := t.TempDir()
 		repository := Repository{}

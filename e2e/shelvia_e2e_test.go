@@ -25,18 +25,33 @@ func TestShelviaCLI(t *testing.T) {
 	require.Equal(t, 0, initResult.code, "stderr = %q", initResult.stderr)
 	require.Contains(t, initResult.stdout, "Initialized shelf.")
 
+	addResult := runShelvia(t, bin, []string{"SHELVIA_DIR=" + shelf}, "add", "Some Book", "--date", "2024-01-02")
+	require.Equal(t, 0, addResult.code, "stderr = %q", addResult.stderr)
+	require.Contains(t, addResult.stdout, "Created Some Book.toml.")
+	require.NoError(t, os.WriteFile(filepath.Join(shelf, "Some Book.toml"), []byte(validBookTOML("Some Book")), 0o644))
+
 	validateResult := runShelvia(t, bin, []string{"SHELVIA_DIR=" + shelf}, "validate")
 	require.Equal(t, 0, validateResult.code, "stderr = %q", validateResult.stderr)
-	require.Contains(t, validateResult.stdout, "Validated 1 book, 1 config file.")
+	require.Contains(t, validateResult.stdout, "Validated 2 books, 1 config file.")
 
 	listResult := runShelvia(t, bin, []string{"SHELVIA_DIR=" + shelf}, "list")
 	require.Equal(t, 0, listResult.code, "stderr = %q", listResult.stderr)
 	require.Contains(t, listResult.stdout, "read_date")
 	require.Contains(t, listResult.stdout, "Example Book")
+	require.Contains(t, listResult.stdout, "Some Book")
 
-	queryResult := runShelvia(t, bin, []string{"SHELVIA_DIR=" + shelf}, "query", "--where", "rating >= 80")
-	require.Equal(t, 0, queryResult.code, "stderr = %q", queryResult.stderr)
-	require.Contains(t, queryResult.stdout, "Example Book")
+	searchResult := runShelvia(t, bin, []string{"SHELVIA_DIR=" + shelf}, "search", "rating >= 80")
+	require.Equal(t, 0, searchResult.code, "stderr = %q", searchResult.stderr)
+	require.Contains(t, searchResult.stdout, "Example Book")
+
+	showResult := runShelvia(t, bin, []string{"SHELVIA_DIR=" + shelf}, "show", "Some Book")
+	require.Equal(t, 0, showResult.code, "stderr = %q", showResult.stderr)
+	require.Contains(t, showResult.stdout, "title")
+	require.Contains(t, showResult.stdout, "Some Book")
+
+	pathResult := runShelvia(t, bin, []string{"SHELVIA_DIR=" + shelf}, "path", "Some Book")
+	require.Equal(t, 0, pathResult.code, "stderr = %q", pathResult.stderr)
+	require.Contains(t, pathResult.stdout, "Some Book.toml")
 }
 
 func TestShelviaCLISortsFixtureShelf(t *testing.T) {
@@ -49,9 +64,22 @@ func TestShelviaCLISortsFixtureShelf(t *testing.T) {
 	bookCount := countBookTOMLFiles(t, fixtureShelf)
 	require.Contains(t, validateResult.stdout, fmt.Sprintf("Validated %d book%s, 1 config file.", bookCount, pluralSuffix(bookCount)))
 
-	sortResult := runShelvia(t, bin, []string{"SHELVIA_DIR=" + fixtureShelf}, "query", "--where", "rating >= 0 order by rating desc")
+	sortResult := runShelvia(t, bin, []string{"SHELVIA_DIR=" + fixtureShelf}, "search", "rating >= 0 order by rating desc")
 	require.Equal(t, 0, sortResult.code, "stderr = %q", sortResult.stderr)
 	requireContainsInOrder(t, sortResult.stdout, "Top Rated Book", "Some Book", "Example Book", "Mid Rated Book", "Low Rated Book")
+}
+
+func validBookTOML(title string) string {
+	return `title = "` + title + `"
+author = "Some Author"
+rating = 90
+read_date = 2024-01-02
+
+genre = "Novel"
+edition = "Paperback"
+imprint = "Example Paperback"
+publisher = "Example Publisher"
+`
 }
 
 type commandResult struct {
