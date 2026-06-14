@@ -7,10 +7,12 @@ type CommandKind int
 
 const (
 	Init CommandKind = iota
-	New
+	Add
 	Validate
 	List
-	Query
+	Search
+	Show
+	Path
 )
 
 // Command contains the validated command-line intent.

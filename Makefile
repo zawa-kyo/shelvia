@@ -5,7 +5,7 @@ SHELVIA ?= $(GO) run ./cmd/shelvia
 DEMO_SHELF ?= fixtures/shelves/valid/minimal
 WHERE ?= rating >= 90
 
-.PHONY: install test test-v test-pretty test-cover vet e2e demo-validate demo-list demo-query demo-sort demo-query-novel demo
+.PHONY: install test test-v test-pretty test-cover vet e2e demo-validate demo-list demo-search demo-sort demo-search-novel demo
 
 install:
 	@mkdir -p "$(LOCAL_BIN)"
@@ -31,7 +31,7 @@ vet:
 e2e:
 	@$(GO) test -tags=e2e ./e2e
 
-demo: demo-validate demo-list demo-query
+demo: demo-validate demo-list demo-search
 
 demo-validate:
 	@SHELVIA_DIR="$(DEMO_SHELF)" $(SHELVIA) validate
@@ -39,11 +39,11 @@ demo-validate:
 demo-list:
 	@SHELVIA_DIR="$(DEMO_SHELF)" $(SHELVIA) list
 
-demo-query:
-	@SHELVIA_DIR="$(DEMO_SHELF)" $(SHELVIA) query --where '$(WHERE)'
+demo-search:
+	@SHELVIA_DIR="$(DEMO_SHELF)" $(SHELVIA) search '$(WHERE)'
 
 demo-sort:
-	@SHELVIA_DIR="$(DEMO_SHELF)" $(SHELVIA) query --where 'rating >= 0 order by rating desc'
+	@SHELVIA_DIR="$(DEMO_SHELF)" $(SHELVIA) search 'rating >= 0 order by rating desc'
 
-demo-query-novel:
-	@SHELVIA_DIR="$(DEMO_SHELF)" $(SHELVIA) query --where 'genre = "Novel"'
+demo-search-novel:
+	@SHELVIA_DIR="$(DEMO_SHELF)" $(SHELVIA) search 'genre = "Novel"'

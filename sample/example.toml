@@ -1,0 +1,19 @@
+# example.toml is real shelf data and is included in validation.
+title = "Example Book"
+author = "Example Author"
+rating = 80
+read_date = 2024-01-01
+
+genre = "Novel"
+edition = "Paperback"
+imprint = "Example Paperback"
+publisher = "Example Publisher"
+# Optional fields can be omitted. Empty strings are treated as unset.
+series = ""
+translator = ""
+
+[thoughts]
+summary = "A short note."
+body = """
+Longer thoughts can live here.
+"""

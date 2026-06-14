@@ -32,7 +32,7 @@ func TestServiceRunValidate(t *testing.T) {
 	})
 }
 
-func TestServiceRunListAndQuery(t *testing.T) {
+func TestServiceRunListAndSearch(t *testing.T) {
 	t.Run("listは検証済みbookをquery portへ渡す", func(t *testing.T) {
 		query := &recordingQuery{table: Table{Headers: []string{"title"}, Rows: [][]string{{"A"}}}}
 		service := NewService(fakeShelf{data: validShelfData()}, query)
@@ -46,10 +46,10 @@ func TestServiceRunListAndQuery(t *testing.T) {
 		require.Len(t, query.books, 2)
 	})
 
-	t.Run("queryはwhere fragmentをquery portへ渡す", func(t *testing.T) {
+	t.Run("searchはwhere fragmentをquery portへ渡す", func(t *testing.T) {
 		query := &recordingQuery{table: Table{Headers: []string{"title"}, Rows: [][]string{{"B"}}}}
 		service := NewService(fakeShelf{data: validShelfData()}, query)
-		command := Command{Kind: Query, ShelfRoot: "shelf", Where: `rating >= 90`}
+		command := Command{Kind: Search, ShelfRoot: "shelf", Where: `rating >= 90`}
 
 		_, err := service.Run(command)
 
@@ -58,7 +58,7 @@ func TestServiceRunListAndQuery(t *testing.T) {
 	})
 }
 
-func TestServiceRunInitAndNew(t *testing.T) {
+func TestServiceRunInitAndAdd(t *testing.T) {
 	t.Run("initはrepositoryへ委譲する", func(t *testing.T) {
 		shelf := &recordingShelf{newPath: "Some Book.toml"}
 		service := NewService(shelf, fakeQuery{})
@@ -70,11 +70,11 @@ func TestServiceRunInitAndNew(t *testing.T) {
 		require.Equal(t, "shelf", shelf.initRoot)
 	})
 
-	t.Run("newはrepositoryへ委譲して作成パスを返す", func(t *testing.T) {
+	t.Run("addはrepositoryへ委譲して作成パスを返す", func(t *testing.T) {
 		readDate := time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC)
 		shelf := &recordingShelf{newPath: "Some Book.toml"}
 		service := NewService(shelf, fakeQuery{})
-		command := Command{Kind: New, ShelfRoot: "shelf", Title: "Some Book", ReadDate: readDate}
+		command := Command{Kind: Add, ShelfRoot: "shelf", Title: "Some Book", ReadDate: readDate}
 
 		output, err := service.Run(command)
 
@@ -83,6 +83,50 @@ func TestServiceRunInitAndNew(t *testing.T) {
 		require.Equal(t, "shelf", shelf.newRoot)
 		require.Equal(t, "Some Book", shelf.newTitle)
 		require.True(t, shelf.newDate.Equal(readDate))
+	})
+}
+
+func TestServiceRunShowAndPath(t *testing.T) {
+	t.Run("showはtitleに一致する1冊の詳細を返す", func(t *testing.T) {
+		service := NewService(fakeShelf{data: validShelfData()}, fakeQuery{})
+		command := Command{Kind: Show, ShelfRoot: "shelf", Title: "A"}
+
+		output, err := service.Run(command)
+
+		require.NoError(t, err)
+		require.Equal(t, []string{"field", "value"}, output.Table.Headers)
+		require.Contains(t, output.Table.Rows, []string{"title", "A"})
+		require.Contains(t, output.Table.Rows, []string{"path", "A.toml"})
+	})
+
+	t.Run("pathはtitleに一致する1冊のファイルパスを返す", func(t *testing.T) {
+		service := NewService(fakeShelf{data: validShelfData()}, fakeQuery{})
+		command := Command{Kind: Path, ShelfRoot: "shelf", Title: "A"}
+
+		output, err := service.Run(command)
+
+		require.NoError(t, err)
+		require.Equal(t, "A.toml", output.Message)
+	})
+
+	t.Run("一致するtitleがなければエラーにする", func(t *testing.T) {
+		service := NewService(fakeShelf{data: validShelfData()}, fakeQuery{})
+		command := Command{Kind: Show, ShelfRoot: "shelf", Title: "Missing"}
+
+		_, err := service.Run(command)
+
+		require.EqualError(t, err, `book title not found: Missing`)
+	})
+
+	t.Run("同じtitleが複数あれば候補パスを含むエラーにする", func(t *testing.T) {
+		data := validShelfData()
+		data.Books[1].Title = "B"
+		service := NewService(fakeShelf{data: data}, fakeQuery{})
+		command := Command{Kind: Path, ShelfRoot: "shelf", Title: "B"}
+
+		_, err := service.Run(command)
+
+		require.EqualError(t, err, `book title is ambiguous: B (B.toml, A.toml)`)
 	})
 }
 
