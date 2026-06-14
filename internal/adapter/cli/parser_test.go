@@ -63,6 +63,17 @@ func TestParse(t *testing.T) {
 		require.Equal(t, ".", command.ShelfRoot)
 	})
 
+	t.Run("initはPATH省略時に明示的なshelfを使う", func(t *testing.T) {
+		t.Setenv("SHELVIA_DIR", "env-shelf")
+		args := []string{"--shelf", "arg-shelf", "init"}
+
+		command, err := Parse(args)
+
+		require.NoError(t, err)
+		require.Equal(t, application.Init, command.Kind)
+		require.Equal(t, "arg-shelf", command.ShelfRoot)
+	})
+
 	t.Run("addはタイトルと日付を読む", func(t *testing.T) {
 		t.Setenv("SHELVIA_DIR", "env-shelf")
 		args := []string{"add", "--date", "2024-01-02", "Some Book"}

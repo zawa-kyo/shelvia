@@ -33,6 +33,9 @@ func Parse(args []string) (application.Command, error) {
 			return application.Command{}, fmt.Errorf("usage: shelvia init [PATH]")
 		}
 		root := "."
+		if *shelf != "" {
+			root = *shelf
+		}
 		if len(rest) == 2 {
 			root = rest[1]
 		}
