@@ -21,7 +21,7 @@ Shelvia is built to keep the convenience of plain text while adding database-lik
 - Store one book as one TOML file.
 - Keep reading data in your own repository.
 - Create `config.toml` and `example.toml` with `init`.
-- Create a book file template with `new`.
+- Create a book file template with `add`.
 - Validate required fields, ratings, dates, genres, publishers, and other controlled values.
 - Search with SQL-like conditions.
 - Treat TOML as the source of truth and use SQLite only as a temporary search view.
@@ -38,7 +38,8 @@ Create a directory for your reading data. Shelvia calls this directory the `shel
 shelvia init ./my-shelf
 ```
 
-`init` creates `config.toml` and `example.toml` in the specified `shelf root`. `example.toml` is an example book file that is included in validation.
+`init` initializes the specified directory as a `shelf root` and writes `config.toml` and `example.toml` inside it. If the directory does not exist, Shelvia creates it.
+`example.toml` is an example book file that is included in validation.
 Both files start as a minimal working setup, and comments point out what to edit.
 
 ```text
@@ -56,10 +57,10 @@ export SHELVIA_DIR=./my-shelf
 Create a book file template.
 
 ```bash
-shelvia new "Some Book" --read-date 2024-01-01
+shelvia add "Some Book" --date 2024-01-01
 ```
 
-`new` creates `Some Book.toml`. Open the generated file and fill in the book details.
+`add` creates `Some Book.toml` and also writes the given title to the file's `title` field. Open the generated file and fill in the book details.
 
 ```toml
 title = "Some Book"
@@ -129,12 +130,26 @@ shelvia list
 Search with conditions.
 
 ```bash
-shelvia query --where 'rating >= 90'
-shelvia query --where 'genre = "Novel" and publisher = "Example Publisher"'
-shelvia query --where 'rating >= 90 order by rating desc'
+shelvia search 'rating >= 90'
+shelvia search 'genre = "Novel" and publisher = "Example Publisher"'
+shelvia search 'rating >= 90 order by rating desc'
 ```
 
-`query --where` accepts filter conditions for `title`, `author`, `rating`, `read_date`, `genre`, `publisher`, `edition`, `imprint`, `series`, and `translator`. Add `order by <column> [asc|desc]` at the end to sort by one of the same columns. Without `order by`, sorting and displayed columns are the same as `list`.
+`search` accepts filter conditions for `title`, `author`, `rating`, `read_date`, `genre`, `publisher`, `edition`, `imprint`, `series`, and `translator`. Add `order by <column> [asc|desc]` at the end to sort by one of the same columns. Without `order by`, sorting and displayed columns are the same as `list`.
+
+Show one book by passing its `title` value, not its file name.
+
+```bash
+shelvia show "Some Book"
+```
+
+Print the generated TOML file path by passing the same `title`.
+
+```bash
+shelvia path "Some Book"
+```
+
+If multiple books have the same `title`, `show` and `path` fail and print the matching file paths as candidates.
 
 ## Data Format
 
@@ -245,4 +260,4 @@ On failure, Shelvia prints the file path, location, and reason.
 Some Book.toml:5: unknown genre "Novel"
 ```
 
-If `validate` succeeds, the same shelf can be loaded by `list` and `query`. It is intended as a pre-commit check after adding or editing reading data.
+If `validate` succeeds, the same shelf can be loaded by `list` and `search`. It is intended as a pre-commit check after adding or editing reading data.

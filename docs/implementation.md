@@ -134,7 +134,7 @@ Application レイヤーは、コマンドの流れを調停します。
 - 一時的な検索ビューを作る
 - コマンド出力を返す
 
-`init` が既存ファイルを上書きしない、といったコマンド単位の判断は application が持ちます。将来 `--force` のようなオプションを追加する場合も、この層で扱います。
+`init` が既存ファイルを上書きしない、`add` が既存の書籍ファイルを上書きしない、といったコマンド単位の判断は application が持ちます。将来 `--force` のようなオプションを追加する場合も、この層で扱います。
 
 Application は local filesystem や query engine の具象実装には依存しません。必要な操作は port として定義し、外側の adapter が実装します。
 
@@ -163,8 +163,8 @@ Domain は、local filesystem、query engine、端末表示、コマンドライ
 Local filesystem adapter は、OS のファイルシステム上にある shelf の読み書きを担当します。`.toml` 探索と `config.toml` の扱いは [CLI Behavior](./cli-behavior.md) に従います。
 
 - `init` のために `config.toml` と `example.toml` を作る
-- `new` のために 1 冊分の TOML テンプレートを作る
-- `new` のファイル名を OS 非依存に検証し、既存ファイルを上書きしない
+- `add` のために 1 冊分の TOML テンプレートを作る
+- `add` のファイル名を OS 非依存に検証し、既存ファイルを上書きしない
 
 ファイル由来の診断では、`Some Book.toml` のようなユーザーに見えるパスを保持します。
 
@@ -172,7 +172,7 @@ Local filesystem adapter は、OS のファイルシステム上にある shelf 
 
 Query engine adapter は、検証済みの書籍からインメモリの検索ビューを作ります。初回実装では内部実装として SQLite を使ってよいですが、package 名には永続化方式やライブラリ名を出しません。SQLite は検索を助けるための一時ビューであり、永続化は行いません。
 
-`query --where` は、検索ビューに適用する前に、[CLI Behavior](./cli-behavior.md) で定義した範囲に収まるかを検証します。対応範囲外の SQL 風 fragment は adapter 境界で拒否します。`order by` は単一カラムの並び替えだけを受け付け、複数カラム指定や `limit` などの追加句は扱いません。
+`search` の条件は、検索ビューに適用する前に、[CLI Behavior](./cli-behavior.md) で定義した範囲に収まるかを検証します。対応範囲外の SQL 風 fragment は adapter 境界で拒否します。`order by` は単一カラムの並び替えだけを受け付け、複数カラム指定や `limit` などの追加句は扱いません。
 
 ### Presentation
 

@@ -21,7 +21,7 @@ Shelvia は、プレーンテキストの扱いやすさと、データベース
 - 1 冊を 1 つの TOML ファイルとして保存
 - 読書データを自分のリポジトリで管理
 - `init` で `config.toml` と `example.toml` を作成
-- `new` で書籍ファイルのひな形を作成
+- `add` で書籍ファイルのテンプレートを作成
 - 必須項目、評価、日付、ジャンル、出版社などの候補値を検証
 - SQL 風の条件で検索
 - TOML を情報源として扱い、SQLite は検索用の一時ビューとして利用
@@ -38,7 +38,7 @@ Shelvia は、プレーンテキストの扱いやすさと、データベース
 shelvia init ./my-shelf
 ```
 
-`init` は、指定した `shelf root` に `config.toml` と `example.toml` を作成します。
+`init` は指定したディレクトリを `shelf root` として初期化し、その中に `config.toml` と `example.toml` を作成します。指定したディレクトリが存在しない場合は、新しく作成します。
 `example.toml` は、検証対象に含まれる書籍データのサンプルファイルです。
 どちらのファイルも最小構成で始まり、コメントで編集ポイントを案内します。
 
@@ -54,13 +54,13 @@ my-shelf/
 export SHELVIA_DIR=./my-shelf
 ```
 
-書籍ファイルのひな形を作成します。
+書籍ファイルのテンプレートを作成します。
 
 ```bash
-shelvia new "Some Book" --read-date 2024-01-01
+shelvia add "Some Book" --date 2024-01-01
 ```
 
-`new` は、`Some Book.toml` を作成します。作成されたファイルを開き、書籍情報を入力します。
+`add` は、`Some Book.toml` を作成し、ファイル内の `title` にも指定したタイトルを設定します。作成されたファイルを開き、書籍情報を入力します。
 
 ```toml
 title = "Some Book"
@@ -130,12 +130,26 @@ shelvia list
 条件を指定して検索します。
 
 ```bash
-shelvia query --where 'rating >= 90'
-shelvia query --where 'genre = "Novel" and publisher = "Example Publisher"'
-shelvia query --where 'rating >= 90 order by rating desc'
+shelvia search 'rating >= 90'
+shelvia search 'genre = "Novel" and publisher = "Example Publisher"'
+shelvia search 'rating >= 90 order by rating desc'
 ```
 
-`query --where` は、`title`、`author`、`rating`、`read_date`、`genre`、`publisher`、`edition`、`imprint`、`series`、`translator` を対象にした絞り込み条件を受け取ります。`order by <column> [asc|desc]` を末尾に付けると、同じカラムで並び替えできます。`order by` を指定しない場合の並び順と表示列は `list` と同じです。
+`search` は、`title`、`author`、`rating`、`read_date`、`genre`、`publisher`、`edition`、`imprint`、`series`、`translator` を対象にした絞り込み条件を受け取ります。`order by <column> [asc|desc]` を末尾に付けると、同じカラムで並び替えできます。`order by` を指定しない場合の並び順と表示列は `list` と同じです。
+
+1 冊の詳細を表示するには、ファイル名ではなくファイル内の `title` を指定します。
+
+```bash
+shelvia show "Some Book"
+```
+
+生成された TOML ファイルの場所を調べる場合も、`title` を指定します。
+
+```bash
+shelvia path "Some Book"
+```
+
+同じ `title` の書籍が複数ある場合、`show` と `path` はエラーにし、該当するファイルパスを候補として表示します。
 
 ## データ形式
 
@@ -246,4 +260,4 @@ Validated 1 book, 1 config file.
 Some Book.toml:5: unknown genre "Novel"
 ```
 
-`validate` が成功した shelf は、`list` や `query` でも同じように読み込める状態です。データを追加・編集したあと、コミット前の確認として使うことを想定しています。
+`validate` が成功した shelf は、`list` や `search` でも同じように読み込める状態です。データを追加・編集したあと、コミット前の確認として使うことを想定しています。

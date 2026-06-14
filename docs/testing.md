@@ -56,17 +56,18 @@ author.go, rating.go, etc.   -> value_objects_test.go
 Application、CLI、presentation、local filesystem 境界は結合テストで確認します。インフラ層の依存先、特に query engine の DB は mock または fake adapter に差し替えます。
 
 - `shelf root` の解決と、未指定時のエラー
-- `init` のファイル作成方針
-- `new` の作成パスと TOML テンプレート
-- `new` のファイル名検証と既存ファイル衝突
+- `init` の shelf 作成方針
+- `add` の作成パスと TOML テンプレート
+- `add` のファイル名検証と既存ファイル衝突
 - `config.toml` が書籍ファイルとして扱われないこと
 - 直下以外の `config.toml` が明示エラーになること
 - TOML parsing から application command までの流れ
 - ファイルパスを含む検証エラー
-- `validate`、`list`、`query` の command output
-- `list` と `query` の既定順が `read_date desc, title asc` であること
-- `list` と `query` の表示列が揃っていること
-- 対応する `--where` fragment が query port に渡ること
+- `validate`、`list`、`search`、`show`、`path` の command output
+- `list` と `search` の既定順が `read_date desc, title asc` であること
+- `list` と `search` の表示列が揃っていること
+- 対応する検索 fragment が query port に渡ること
+- `show` と `path` がファイル名ではなく `title` で 1 件を特定すること
 - 未対応または危険な SQL fragment が adapter 境界で拒否されること
 
 DB そのものの挙動は query engine adapter の薄い adapter test に限定します。主な振る舞いは、DB に依存しない application-level integration test で検証します。
@@ -77,4 +78,4 @@ Fixture shelf は `fixtures/shelves/` 配下に置きます。`valid/` は正常
 
 E2E test は `e2e/` に置き、`make e2e` から build tag `e2e` 付きで実行します。これは Go の integration test を置き換えるものではなく、実際の CLI binary、環境変数、終了コード、標準出力を含む主要導線の smoke test として扱います。
 
-E2E test では、一時ディレクトリに shelf を作成して `init`、`validate`、`list`、`query` を確認します。並び替えのように複数データが必要な確認では、`fixtures/shelves/valid/minimal` を使い、出力内のタイトル順を機械的に検証します。
+E2E test では、一時ディレクトリに shelf を作成して `init`、`add`、`validate`、`list`、`search` を確認します。並び替えのように複数データが必要な確認では、`fixtures/shelves/valid/minimal` を使い、出力内のタイトル順を機械的に検証します。
