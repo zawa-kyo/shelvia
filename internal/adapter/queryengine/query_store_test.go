@@ -76,6 +76,7 @@ func TestStoreQueryRejectsUnsupportedWhere(t *testing.T) {
 		{name: "order byの後に余分な構文は受け付けない", where: "rating >= 80 order by title desc limit 1"},
 		{name: "select文は受け付けない", where: "select * from books"},
 		{name: "in演算子は受け付けない", where: "title in ('A')"},
+		{name: "二重等号演算子は受け付けない", where: "rating == 90"},
 		{name: "関数呼び出しは受け付けない", where: "lower(title) = 'a'"},
 		{name: "複数文は受け付けない", where: "title = 'A'; drop table books"},
 		{name: "コメントは受け付けない", where: "title = 'A' -- comment"},
@@ -132,7 +133,7 @@ func mustBook(t *testing.T, allowed domain.AllowedValues, title, author string, 
 	book, err := domain.NewBook(domain.BookDraft{
 		Title:      title,
 		Author:     author,
-		Rating:     rating,
+		Rating:     intPointer(rating),
 		ReadDate:   readDate,
 		Genre:      genre,
 		Publisher:  "Example Publisher",
@@ -143,6 +144,10 @@ func mustBook(t *testing.T, allowed domain.AllowedValues, title, author string, 
 	require.NoError(t, err)
 
 	return book
+}
+
+func intPointer(value int) *int {
+	return &value
 }
 
 func titles(rows [][]string) []string {

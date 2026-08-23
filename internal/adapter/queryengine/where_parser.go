@@ -265,7 +265,19 @@ func (parser *whereParser) parseComparison() (expr, error) {
 	if op.kind != tokenOperator {
 		return nil, fmt.Errorf("expected operator after %s", column.text)
 	}
+	if !isSupportedComparisonOperator(op.text) {
+		return nil, fmt.Errorf("unsupported operator in search condition: %s", op.text)
+	}
 	return parser.parseBinary(column.text, op.text)
+}
+
+func isSupportedComparisonOperator(op string) bool {
+	switch op {
+	case "=", "!=", "<", "<=", ">", ">=":
+		return true
+	default:
+		return false
+	}
 }
 
 func (parser *whereParser) parseBinary(column, op string) (expr, error) {

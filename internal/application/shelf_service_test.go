@@ -170,7 +170,7 @@ func validShelfData() ShelfData {
 				Path:      "B.toml",
 				Title:     "B",
 				Author:    "Author B",
-				Rating:    90,
+				Rating:    intPointer(90),
 				ReadDate:  time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC),
 				Genre:     "Novel",
 				Publisher: "Example Publisher",
@@ -181,13 +181,17 @@ func validShelfData() ShelfData {
 				Path:      "A.toml",
 				Title:     "A",
 				Author:    "Author A",
-				Rating:    80,
+				Rating:    intPointer(80),
 				ReadDate:  time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 				Genre:     "Technical",
 				Publisher: "Example Publisher",
 			},
 		},
 	}
+}
+
+func intPointer(value int) *int {
+	return &value
 }
 
 type fakeShelf struct {

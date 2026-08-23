@@ -27,7 +27,7 @@ func validBookDraft() BookDraft {
 	return BookDraft{
 		Title:     "Some Book",
 		Author:    "Some Author",
-		Rating:    90,
+		Rating:    intPointer(90),
 		ReadDate:  time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC),
 		Genre:     "Novel",
 		Publisher: "Example Publisher",
@@ -35,6 +35,10 @@ func validBookDraft() BookDraft {
 		Imprint:   "Example Paperback",
 		Series:    "  ",
 	}
+}
+
+func intPointer(value int) *int {
+	return &value
 }
 
 func TestBookRecord(t *testing.T) {
@@ -58,6 +62,17 @@ func TestBookRecord(t *testing.T) {
 		require.False(t, book.Translator().IsSpecified(), "空の訳者は未指定として扱われるべきです")
 		require.False(t, book.Summary().IsSpecified(), "空のひとことメモは未指定として扱われるべきです")
 		require.False(t, book.Body().IsSpecified(), "空の感想本文は未指定として扱われるべきです")
+	})
+
+	t.Run("評価0点の本を記録できる", func(t *testing.T) {
+		draft := validBookDraft()
+		draft.Rating = intPointer(0)
+		allowed := testAllowedValues(t)
+
+		book, err := NewBook(draft, allowed)
+
+		require.NoError(t, err, "本を記録できませんでした")
+		require.Equal(t, 0, book.Rating().Int())
 	})
 }
 
@@ -133,6 +148,16 @@ func TestOptionalFields(t *testing.T) {
 }
 
 func TestInvalidBookRecord(t *testing.T) {
+	t.Run("評価のない本は記録できない", func(t *testing.T) {
+		draft := validBookDraft()
+		draft.Rating = nil
+		allowed := testAllowedValues(t)
+
+		_, err := NewBook(draft, allowed)
+
+		require.Equal(t, ValidationError{Field: "rating", Reason: "required"}, err)
+	})
+
 	tests := []struct {
 		name       string
 		mutate     func(*BookDraft)
@@ -156,7 +181,7 @@ func TestInvalidBookRecord(t *testing.T) {
 		{
 			name: "評価が100点を超える本は記録できない",
 			mutate: func(draft *BookDraft) {
-				draft.Rating = 101
+				draft.Rating = intPointer(101)
 			},
 			wantField: "rating",
 		},
