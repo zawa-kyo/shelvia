@@ -29,11 +29,11 @@ func (Store) Query(books []domain.Book, where string) (application.Table, error)
 	}
 	filtered := make([]domain.Book, 0, len(books))
 	for _, book := range books {
-		ok, err := query.where.eval(rowFromBook(book))
+		result, err := query.where.eval(rowFromBook(book))
 		if err != nil {
 			return application.Table{}, err
 		}
-		if ok {
+		if result == truthTrue {
 			filtered = append(filtered, book)
 		}
 	}
@@ -134,8 +134,16 @@ func optionalText(text domain.OptionalText) string {
 }
 
 type expr interface {
-	eval(row map[string]string) (bool, error)
+	eval(row map[string]string) (truthValue, error)
 }
+
+type truthValue uint8
+
+const (
+	truthFalse truthValue = iota
+	truthTrue
+	truthUnknown
+)
 
 type comparison struct {
 	column string
@@ -143,32 +151,32 @@ type comparison struct {
 	value  string
 }
 
-func (node comparison) eval(row map[string]string) (bool, error) {
+func (node comparison) eval(row map[string]string) (truthValue, error) {
 	left := row[node.column]
 	if node.op == "is null" {
-		return left == "", nil
+		return truthFromBool(left == ""), nil
 	}
 	if node.op == "is not null" {
-		return left != "", nil
+		return truthFromBool(left != ""), nil
 	}
 	if left == "" {
-		return false, nil
+		return truthUnknown, nil
 	}
 	if node.column == "rating" {
 		leftNumber, err := strconv.Atoi(left)
 		if err != nil {
-			return false, err
+			return truthFalse, err
 		}
 		rightNumber, err := strconv.Atoi(node.value)
 		if err != nil {
-			return false, fmt.Errorf("rating comparison requires a number")
+			return truthFalse, fmt.Errorf("rating comparison requires a number")
 		}
-		return compareInt(leftNumber, rightNumber, node.op), nil
+		return truthFromBool(compareInt(leftNumber, rightNumber, node.op)), nil
 	}
 	if node.op == "like" {
-		return like(left, node.value), nil
+		return truthFromBool(like(left, node.value)), nil
 	}
-	return compareString(left, node.value, node.op), nil
+	return truthFromBool(compareString(left, node.value, node.op)), nil
 }
 
 type logical struct {
@@ -176,34 +184,56 @@ type logical struct {
 	left, right expr
 }
 
-func (node logical) eval(row map[string]string) (bool, error) {
+func (node logical) eval(row map[string]string) (truthValue, error) {
 	left, err := node.left.eval(row)
 	if err != nil {
-		return false, err
+		return truthFalse, err
 	}
-	if node.op == "and" && !left {
-		return false, nil
+	if node.op == "and" && left == truthFalse {
+		return truthFalse, nil
 	}
-	if node.op == "or" && left {
-		return true, nil
+	if node.op == "or" && left == truthTrue {
+		return truthTrue, nil
 	}
 	right, err := node.right.eval(row)
 	if err != nil {
-		return false, err
+		return truthFalse, err
 	}
 	if node.op == "and" {
-		return left && right, nil
+		if left == truthTrue {
+			return right, nil
+		}
+		if right == truthFalse {
+			return truthFalse, nil
+		}
+		return truthUnknown, nil
 	}
-	return left || right, nil
+	if left == truthFalse {
+		return right, nil
+	}
+	if right == truthTrue {
+		return truthTrue, nil
+	}
+	return truthUnknown, nil
 }
 
 type negation struct {
 	inner expr
 }
 
-func (node negation) eval(row map[string]string) (bool, error) {
+func (node negation) eval(row map[string]string) (truthValue, error) {
 	value, err := node.inner.eval(row)
-	return !value, err
+	if err != nil || value == truthUnknown {
+		return value, err
+	}
+	return truthFromBool(value == truthFalse), nil
+}
+
+func truthFromBool(value bool) truthValue {
+	if value {
+		return truthTrue
+	}
+	return truthFalse
 }
 
 func compareInt(left, right int, op string) bool {

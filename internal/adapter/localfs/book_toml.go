@@ -39,7 +39,7 @@ func localDateTime(date toml.LocalDate) time.Time {
 type bookTOML struct {
 	Title      string         `toml:"title"`
 	Author     string         `toml:"author"`
-	Rating     int            `toml:"rating"`
+	Rating     *int           `toml:"rating"`
 	ReadDate   toml.LocalDate `toml:"read_date"`
 	Genre      string         `toml:"genre"`
 	Publisher  string         `toml:"publisher"`

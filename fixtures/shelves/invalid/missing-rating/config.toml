@@ -1,0 +1,6 @@
+kind = "shelvia-config"
+
+[values]
+genres = ["Novel"]
+publishers = ["Example Publisher"]
+imprints = []

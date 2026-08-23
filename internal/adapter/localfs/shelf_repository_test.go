@@ -47,16 +47,23 @@ func TestRepositoryInitAndLoad(t *testing.T) {
 		require.Contains(t, string(content), "# Add imprint names if you use them. Leave this as [] if not needed yet.")
 	})
 
-	t.Run("既存ファイルは上書きしない", func(t *testing.T) {
-		root := t.TempDir()
-		configPath := filepath.Join(root, "config.toml")
-		require.NoError(t, os.WriteFile(configPath, []byte("already here"), 0o644))
+	for _, filename := range []string{"config.toml", "example.toml"} {
+		t.Run(filename+"が存在する場合は何も上書きも作成もしない", func(t *testing.T) {
+			root := t.TempDir()
+			existingPath := filepath.Join(root, filename)
+			require.NoError(t, os.WriteFile(existingPath, []byte("already here"), 0o644))
 
-		err := Repository{}.Init(root)
+			err := Repository{}.Init(root)
 
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "already exists")
-	})
+			require.ErrorContains(t, err, "already exists")
+			content, readErr := os.ReadFile(existingPath)
+			require.NoError(t, readErr)
+			require.Equal(t, "already here", string(content))
+			entries, readDirErr := os.ReadDir(root)
+			require.NoError(t, readDirErr)
+			require.Len(t, entries, 1)
+		})
+	}
 }
 
 func TestRepositoryCreateBook(t *testing.T) {
@@ -73,6 +80,29 @@ func TestRepositoryCreateBook(t *testing.T) {
 		require.Equal(t, "Some Book.toml", path)
 		require.Contains(t, string(content), `title = "Some Book"`)
 		require.Contains(t, string(content), "read_date = 2024-01-02")
+	})
+
+	t.Run("toml拡張子は二重に付けない", func(t *testing.T) {
+		root := t.TempDir()
+
+		path, err := Repository{}.CreateBook(root, "Some Book.toml", time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC))
+
+		require.NoError(t, err)
+		require.Equal(t, "Some Book.toml", path)
+		require.FileExists(t, filepath.Join(root, path))
+	})
+
+	t.Run("同名ファイルは上書きしない", func(t *testing.T) {
+		root := t.TempDir()
+		path := filepath.Join(root, "Some Book.toml")
+		require.NoError(t, os.WriteFile(path, []byte("already here"), 0o644))
+
+		_, err := Repository{}.CreateBook(root, "Some Book", time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC))
+
+		require.ErrorContains(t, err, "already exists")
+		content, readErr := os.ReadFile(path)
+		require.NoError(t, readErr)
+		require.Equal(t, "already here", string(content))
 	})
 
 	t.Run("Windowsでも危険なファイル名を拒否する", func(t *testing.T) {

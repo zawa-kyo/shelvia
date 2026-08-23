@@ -56,6 +56,30 @@ func TestServiceRunListAndSearch(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, `rating >= 90`, query.where)
 	})
+
+	t.Run("shelfの読み込みに失敗した場合はquery portを呼ばない", func(t *testing.T) {
+		query := &recordingQuery{}
+		service := NewService(fakeShelf{err: errors.New("load failed")}, query)
+		command := Command{Kind: List, ShelfRoot: "shelf"}
+
+		_, err := service.Run(command)
+
+		require.EqualError(t, err, "load failed")
+		require.Zero(t, query.listCount)
+		require.Empty(t, query.books)
+	})
+
+	t.Run("query portのエラーを返す", func(t *testing.T) {
+		query := &recordingQuery{err: errors.New("query failed")}
+		service := NewService(fakeShelf{data: validShelfData()}, query)
+		command := Command{Kind: Search, ShelfRoot: "shelf", Where: `rating >= 90`}
+
+		_, err := service.Run(command)
+
+		require.EqualError(t, err, "query failed")
+		require.Equal(t, `rating >= 90`, query.where)
+		require.Len(t, query.books, 2)
+	})
 }
 
 func TestServiceRunInitAndAdd(t *testing.T) {
@@ -146,7 +170,7 @@ func validShelfData() ShelfData {
 				Path:      "B.toml",
 				Title:     "B",
 				Author:    "Author B",
-				Rating:    90,
+				Rating:    intPointer(90),
 				ReadDate:  time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC),
 				Genre:     "Novel",
 				Publisher: "Example Publisher",
@@ -157,13 +181,17 @@ func validShelfData() ShelfData {
 				Path:      "A.toml",
 				Title:     "A",
 				Author:    "Author A",
-				Rating:    80,
+				Rating:    intPointer(80),
 				ReadDate:  time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 				Genre:     "Technical",
 				Publisher: "Example Publisher",
 			},
 		},
 	}
+}
+
+func intPointer(value int) *int {
+	return &value
 }
 
 type fakeShelf struct {
@@ -222,6 +250,7 @@ func (fakeQuery) Query([]domain.Book, string) (Table, error) {
 
 type recordingQuery struct {
 	table     Table
+	err       error
 	listCount int
 	where     string
 	books     []domain.Book
@@ -230,11 +259,11 @@ type recordingQuery struct {
 func (query *recordingQuery) List(books []domain.Book) (Table, error) {
 	query.listCount++
 	query.books = books
-	return query.table, nil
+	return query.table, query.err
 }
 
 func (query *recordingQuery) Query(books []domain.Book, where string) (Table, error) {
 	query.books = books
 	query.where = where
-	return query.table, nil
+	return query.table, query.err
 }

@@ -31,7 +31,7 @@ type BookData struct {
 	Path      string
 	Title     string
 	Author    string
-	Rating    int
+	Rating    *int
 	ReadDate  time.Time
 	Genre     string
 	Publisher string

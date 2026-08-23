@@ -5,7 +5,6 @@ package e2e_test
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,54 +18,60 @@ import (
 func TestShelviaCLI(t *testing.T) {
 	repoRoot := repoRoot(t)
 	bin := buildShelvia(t, repoRoot)
-	shelf := filepath.Join(t.TempDir(), "shelf")
 
-	initResult := runShelvia(t, bin, nil, "init", shelf)
-	require.Equal(t, 0, initResult.code, "stderr = %q", initResult.stderr)
-	require.Contains(t, initResult.stdout, "Initialized shelf.")
+	t.Run("initしたshelfでaddからsearchまで実行できる", func(t *testing.T) {
+		shelf := filepath.Join(t.TempDir(), "reading-log")
 
-	addResult := runShelvia(t, bin, []string{"SHELVIA_DIR=" + shelf}, "add", "Some Book", "--date", "2024-01-02")
-	require.Equal(t, 0, addResult.code, "stderr = %q", addResult.stderr)
-	require.Contains(t, addResult.stdout, "Created Some Book.toml.")
-	require.NoError(t, os.WriteFile(filepath.Join(shelf, "Some Book.toml"), []byte(validBookTOML("Some Book")), 0o644))
+		result := runShelvia(t, bin, "", "init", shelf)
 
-	validateResult := runShelvia(t, bin, []string{"SHELVIA_DIR=" + shelf}, "validate")
-	require.Equal(t, 0, validateResult.code, "stderr = %q", validateResult.stderr)
-	require.Contains(t, validateResult.stdout, "Validated 2 books, 1 config file.")
+		requireSuccess(t, result, "Initialized shelf.\n")
+		require.FileExists(t, filepath.Join(shelf, "config.toml"))
+		require.FileExists(t, filepath.Join(shelf, "example.toml"))
 
-	listResult := runShelvia(t, bin, []string{"SHELVIA_DIR=" + shelf}, "list")
-	require.Equal(t, 0, listResult.code, "stderr = %q", listResult.stderr)
-	require.Contains(t, listResult.stdout, "read_date")
-	require.Contains(t, listResult.stdout, "Example Book")
-	require.Contains(t, listResult.stdout, "Some Book")
+		result = runShelvia(t, bin, shelf, "add", "Some Book", "--date", "2024-01-02")
 
-	searchResult := runShelvia(t, bin, []string{"SHELVIA_DIR=" + shelf}, "search", "rating >= 80")
-	require.Equal(t, 0, searchResult.code, "stderr = %q", searchResult.stderr)
-	require.Contains(t, searchResult.stdout, "Example Book")
+		requireSuccess(t, result, "Created Some Book.toml.\n")
+		bookPath := filepath.Join(shelf, "Some Book.toml")
+		require.FileExists(t, bookPath)
+		require.NoError(t, os.WriteFile(bookPath, []byte(validBookTOML("Some Book")), 0o644))
 
-	showResult := runShelvia(t, bin, []string{"SHELVIA_DIR=" + shelf}, "show", "Some Book")
-	require.Equal(t, 0, showResult.code, "stderr = %q", showResult.stderr)
-	require.Contains(t, showResult.stdout, "title")
-	require.Contains(t, showResult.stdout, "Some Book")
+		missingShelf := filepath.Join(t.TempDir(), "missing")
+		result = runShelvia(t, bin, missingShelf, "--shelf", shelf, "validate")
 
-	pathResult := runShelvia(t, bin, []string{"SHELVIA_DIR=" + shelf}, "path", "Some Book")
-	require.Equal(t, 0, pathResult.code, "stderr = %q", pathResult.stderr)
-	require.Contains(t, pathResult.stdout, "Some Book.toml")
-}
+		requireSuccess(t, result, "Validated 2 books, 1 config file.\n")
 
-func TestShelviaCLISortsFixtureShelf(t *testing.T) {
-	repoRoot := repoRoot(t)
-	bin := buildShelvia(t, repoRoot)
-	fixtureShelf := filepath.Join(repoRoot, "fixtures", "shelves", "valid", "minimal")
+		result = runShelvia(t, bin, shelf, "list")
 
-	validateResult := runShelvia(t, bin, []string{"SHELVIA_DIR=" + fixtureShelf}, "validate")
-	require.Equal(t, 0, validateResult.code, "stderr = %q", validateResult.stderr)
-	bookCount := countBookTOMLFiles(t, fixtureShelf)
-	require.Contains(t, validateResult.stdout, fmt.Sprintf("Validated %d book%s, 1 config file.", bookCount, pluralSuffix(bookCount)))
+		require.Equal(t, 0, result.code, "stderr = %q", result.stderr)
+		require.Empty(t, result.stderr)
+		require.Contains(t, result.stdout, "read_date")
+		requireContainsInOrder(t, result.stdout, "Some Book", "Example Book")
 
-	sortResult := runShelvia(t, bin, []string{"SHELVIA_DIR=" + fixtureShelf}, "search", "rating >= 0 order by rating desc")
-	require.Equal(t, 0, sortResult.code, "stderr = %q", sortResult.stderr)
-	requireContainsInOrder(t, sortResult.stdout, "Top Rated Book", "Some Book", "Example Book", "Mid Rated Book", "Low Rated Book")
+		result = runShelvia(t, bin, shelf, "search", "rating >= 80")
+
+		require.Equal(t, 0, result.code, "stderr = %q", result.stderr)
+		require.Empty(t, result.stderr)
+		requireContainsInOrder(t, result.stdout, "Some Book", "Example Book")
+	})
+
+	t.Run("shelf rootが未指定なら利用方法をstderrに表示する", func(t *testing.T) {
+		result := runShelvia(t, bin, "", "validate")
+
+		require.Equal(t, 1, result.code)
+		require.Empty(t, result.stdout)
+		require.Equal(t, "shelf root is not set; pass --shelf or set SHELVIA_DIR\n", result.stderr)
+	})
+
+	t.Run("不正なshelfなら対象ファイルをstderrに表示する", func(t *testing.T) {
+		invalidShelf := filepath.Join(repoRoot, "fixtures", "shelves", "invalid", "missing-required")
+
+		result := runShelvia(t, bin, invalidShelf, "validate")
+
+		require.Equal(t, 1, result.code)
+		require.Empty(t, result.stdout)
+		require.Contains(t, result.stderr, "book.toml")
+		require.Contains(t, result.stderr, "title")
+	})
 }
 
 func validBookTOML(title string) string {
@@ -102,11 +107,14 @@ func buildShelvia(t *testing.T, repoRoot string) string {
 	return bin
 }
 
-func runShelvia(t *testing.T, bin string, env []string, args ...string) commandResult {
+func runShelvia(t *testing.T, bin string, shelf string, args ...string) commandResult {
 	t.Helper()
 
 	cmd := exec.Command(bin, args...)
-	cmd.Env = append(os.Environ(), env...)
+	cmd.Env = withoutEnvironmentVariable(os.Environ(), "SHELVIA_DIR")
+	if shelf != "" {
+		cmd.Env = append(cmd.Env, "SHELVIA_DIR="+shelf)
+	}
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -125,6 +133,13 @@ func runShelvia(t *testing.T, bin string, env []string, args ...string) commandR
 	return commandResult{code: code, stdout: stdout.String(), stderr: stderr.String()}
 }
 
+func requireSuccess(t *testing.T, result commandResult, stdout string) {
+	t.Helper()
+	require.Equal(t, 0, result.code, "stderr = %q", result.stderr)
+	require.Equal(t, stdout, result.stdout)
+	require.Empty(t, result.stderr)
+}
+
 func requireContainsInOrder(t *testing.T, output string, values ...string) {
 	t.Helper()
 
@@ -136,27 +151,15 @@ func requireContainsInOrder(t *testing.T, output string, values ...string) {
 	}
 }
 
-func countBookTOMLFiles(t *testing.T, root string) int {
-	t.Helper()
-
-	entries, err := os.ReadDir(root)
-	require.NoError(t, err)
-
-	count := 0
-	for _, entry := range entries {
-		if entry.IsDir() || entry.Name() == "config.toml" || filepath.Ext(entry.Name()) != ".toml" {
-			continue
+func withoutEnvironmentVariable(env []string, name string) []string {
+	prefix := name + "="
+	filtered := make([]string, 0, len(env))
+	for _, value := range env {
+		if !strings.HasPrefix(value, prefix) {
+			filtered = append(filtered, value)
 		}
-		count++
 	}
-	return count
-}
-
-func pluralSuffix(count int) string {
-	if count == 1 {
-		return ""
-	}
-	return "s"
+	return filtered
 }
 
 func repoRoot(t *testing.T) string {

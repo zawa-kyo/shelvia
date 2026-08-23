@@ -31,7 +31,10 @@ func NewBook(draft BookDraft, allowed AllowedValues) (Book, error) {
 	if err != nil {
 		return Book{}, err
 	}
-	rating, err := NewRating(draft.Rating)
+	if draft.Rating == nil {
+		return Book{}, validationError("rating", "required")
+	}
+	rating, err := NewRating(*draft.Rating)
 	if err != nil {
 		return Book{}, err
 	}

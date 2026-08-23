@@ -1,6 +1,6 @@
 title = "Low Rated Book"
 author = "Example Author"
-rating = 45
+rating = 0
 read_date = 2024-01-03
 
 genre = "Novel"

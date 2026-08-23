@@ -12,7 +12,7 @@ import (
 )
 
 func TestFixtureShelves(t *testing.T) {
-	t.Run("valid minimal shelfを検証できる", func(t *testing.T) {
+	t.Run("評価が0点の書籍を含む正常な最小構成のshelfを検証できる", func(t *testing.T) {
 		service := application.NewService(localfs.Repository{}, queryengine.Store{})
 		command := application.Command{
 			Kind:      application.Validate,
@@ -29,9 +29,10 @@ func TestFixtureShelves(t *testing.T) {
 		name string
 		want string
 	}{
-		{name: "nested-config", want: "misplaced config.toml"},
-		{name: "missing-required", want: "title"},
-		{name: "unknown-config-value", want: "unknown genre"},
+		{name: "nested-config", want: "nested/config.toml: misplaced config.toml"},
+		{name: "missing-required", want: "book.toml: title"},
+		{name: "missing-rating", want: "book.toml: rating: required"},
+		{name: "unknown-config-value", want: "book.toml: genre: unknown genre"},
 	}
 
 	for _, tt := range tests {
