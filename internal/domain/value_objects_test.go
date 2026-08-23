@@ -68,8 +68,9 @@ func TestAuthor(t *testing.T) {
 func TestReadDate(t *testing.T) {
 	t.Run("時刻ではなく読んだ日だけを記録する", func(t *testing.T) {
 		wantDate := time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC)
+		jst := time.FixedZone("JST", 9*60*60)
 
-		got, err := NewReadDate(time.Date(2024, 1, 2, 15, 4, 5, 0, time.Local))
+		got, err := NewReadDate(time.Date(2024, 1, 2, 15, 4, 5, 0, jst))
 
 		require.NoError(t, err, "読了日を記録できませんでした")
 		require.Equal(t, "2024-01-02", got.String())

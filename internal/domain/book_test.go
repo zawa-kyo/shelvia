@@ -74,6 +74,18 @@ func TestEditionAndImprint(t *testing.T) {
 		require.True(t, book.Edition().IsSpecified(), "判型が記録されていません")
 		require.False(t, book.Imprint().IsSpecified(), "レーベルは未指定として扱われるべきです")
 	})
+
+	t.Run("レーベルが不要な判型にも許可されたレーベルを記録できる", func(t *testing.T) {
+		draft := validBookDraft()
+		draft.Edition = "Hardcover"
+		allowed := testAllowedValues(t)
+
+		book, err := NewBook(draft, allowed)
+
+		require.NoError(t, err, "本を記録できませんでした")
+		require.Equal(t, "Hardcover", book.Edition().String())
+		require.Equal(t, "Example Paperback", book.Imprint().String())
+	})
 }
 
 func TestOptionalFields(t *testing.T) {
@@ -122,93 +134,100 @@ func TestOptionalFields(t *testing.T) {
 
 func TestInvalidBookRecord(t *testing.T) {
 	tests := []struct {
-		name    string
-		mutate  func(*BookDraft)
-		wantErr string
+		name       string
+		mutate     func(*BookDraft)
+		wantField  string
+		wantReason string
 	}{
 		{
 			name: "題名のない本は記録できない",
 			mutate: func(draft *BookDraft) {
 				draft.Title = ""
 			},
-			wantErr: "title",
+			wantField: "title",
 		},
 		{
 			name: "著者名のない本は記録できない",
 			mutate: func(draft *BookDraft) {
 				draft.Author = ""
 			},
-			wantErr: "author",
+			wantField: "author",
 		},
 		{
 			name: "評価が100点を超える本は記録できない",
 			mutate: func(draft *BookDraft) {
 				draft.Rating = 101
 			},
-			wantErr: "rating",
+			wantField: "rating",
 		},
 		{
 			name: "読了日のない本は記録できない",
 			mutate: func(draft *BookDraft) {
 				draft.ReadDate = time.Time{}
 			},
-			wantErr: "read_date",
+			wantField: "read_date",
 		},
 		{
 			name: "知らないジャンルの本は記録できない",
 			mutate: func(draft *BookDraft) {
 				draft.Genre = "Mystery"
 			},
-			wantErr: "unknown genre",
+			wantField:  "genre",
+			wantReason: "unknown genre",
 		},
 		{
 			name: "ジャンルのない本は記録できない",
 			mutate: func(draft *BookDraft) {
 				draft.Genre = ""
 			},
-			wantErr: "genre",
+			wantField: "genre",
 		},
 		{
 			name: "知らない出版社の本は記録できない",
 			mutate: func(draft *BookDraft) {
 				draft.Publisher = "Unknown Publisher"
 			},
-			wantErr: "unknown publisher",
+			wantField:  "publisher",
+			wantReason: "unknown publisher",
 		},
 		{
 			name: "出版社のない本は記録できない",
 			mutate: func(draft *BookDraft) {
 				draft.Publisher = ""
 			},
-			wantErr: "publisher",
+			wantField: "publisher",
 		},
 		{
 			name: "判型なしでレーベルだけある本は記録できない",
 			mutate: func(draft *BookDraft) {
 				draft.Edition = ""
 			},
-			wantErr: "imprint requires edition",
+			wantField:  "imprint",
+			wantReason: "imprint requires edition",
 		},
 		{
 			name: "レーベルが必須の判型ではレーベルなしで記録できない",
 			mutate: func(draft *BookDraft) {
 				draft.Imprint = ""
 			},
-			wantErr: "imprint is required",
+			wantField:  "imprint",
+			wantReason: "imprint is required",
 		},
 		{
 			name: "知らない判型の本は記録できない",
 			mutate: func(draft *BookDraft) {
 				draft.Edition = "Unknown Edition"
 			},
-			wantErr: "unknown edition",
+			wantField:  "edition",
+			wantReason: "unknown edition",
 		},
 		{
 			name: "知らないレーベルの本は記録できない",
 			mutate: func(draft *BookDraft) {
 				draft.Imprint = "Unknown Imprint"
 			},
-			wantErr: "unknown imprint",
+			wantField:  "imprint",
+			wantReason: "unknown imprint",
 		},
 	}
 
@@ -221,7 +240,12 @@ func TestInvalidBookRecord(t *testing.T) {
 			_, err := NewBook(draft, allowed)
 
 			require.Error(t, err, "記録できない本を受け入れてしまいました")
-			require.Contains(t, err.Error(), tt.wantErr)
+			var validationErr ValidationError
+			require.ErrorAs(t, err, &validationErr)
+			require.Equal(t, tt.wantField, validationErr.Field)
+			if tt.wantReason != "" {
+				require.Contains(t, validationErr.Reason, tt.wantReason)
+			}
 		})
 	}
 }

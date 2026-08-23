@@ -21,10 +21,19 @@ func (Repository) Init(root string) error {
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		return err
 	}
-	if err := writeNewFile(filepath.Join(root, configFileName), []byte(configTemplate)); err != nil {
+	configPath := filepath.Join(root, configFileName)
+	examplePath := filepath.Join(root, "example.toml")
+	for _, path := range []string{configPath, examplePath} {
+		if _, err := os.Stat(path); err == nil {
+			return fmt.Errorf("%s already exists", filepath.ToSlash(path))
+		} else if !os.IsNotExist(err) {
+			return err
+		}
+	}
+	if err := writeNewFile(configPath, []byte(configTemplate)); err != nil {
 		return err
 	}
-	return writeNewFile(filepath.Join(root, "example.toml"), []byte(exampleTemplate))
+	return writeNewFile(examplePath, []byte(exampleTemplate))
 }
 
 // Creates a TOML template for a single book.

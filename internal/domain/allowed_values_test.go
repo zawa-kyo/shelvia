@@ -56,56 +56,65 @@ func TestAllowedValues(t *testing.T) {
 
 func TestInvalidAllowedValues(t *testing.T) {
 	tests := []struct {
-		name  string
-		input AllowedValuesInput
+		name      string
+		input     AllowedValuesInput
+		wantField string
 	}{
 		{
 			name: "空のジャンル名は候補にできない",
 			input: AllowedValuesInput{
 				Genres: []string{"Novel", " "},
 			},
-		},
-		{
-			name: "同じ出版社名は候補に重複して書けない",
-			input: AllowedValuesInput{
-				Publishers: []string{"Example Publisher", "Example Publisher"},
-			},
-		},
-		{
-			name: "空の判型名は候補にできない",
-			input: AllowedValuesInput{
-				Editions: []EditionInput{{Name: " "}},
-			},
+			wantField: "genre",
 		},
 		{
 			name: "空白違いだけのジャンル名は同じ候補として扱う",
 			input: AllowedValuesInput{
 				Genres: []string{"Novel", " Novel "},
 			},
+			wantField: "genre",
 		},
 		{
 			name: "空の出版社名は候補にできない",
 			input: AllowedValuesInput{
 				Publishers: []string{" "},
 			},
+			wantField: "publisher",
+		},
+		{
+			name: "空白違いだけの出版社名は同じ候補として扱う",
+			input: AllowedValuesInput{
+				Publishers: []string{"Example Publisher", " Example Publisher "},
+			},
+			wantField: "publisher",
 		},
 		{
 			name: "空のレーベル名は候補にできない",
 			input: AllowedValuesInput{
 				Imprints: []string{" "},
 			},
+			wantField: "imprint",
 		},
 		{
 			name: "空白違いだけのレーベル名は同じ候補として扱う",
 			input: AllowedValuesInput{
 				Imprints: []string{"Example Paperback", " Example Paperback "},
 			},
+			wantField: "imprint",
+		},
+		{
+			name: "空の判型名は候補にできない",
+			input: AllowedValuesInput{
+				Editions: []EditionInput{{Name: " "}},
+			},
+			wantField: "edition",
 		},
 		{
 			name: "空白違いだけの判型名は同じ候補として扱う",
 			input: AllowedValuesInput{
 				Editions: []EditionInput{{Name: "Paperback"}, {Name: " Paperback "}},
 			},
+			wantField: "edition",
 		},
 	}
 
@@ -114,6 +123,9 @@ func TestInvalidAllowedValues(t *testing.T) {
 			_, err := NewAllowedValues(tt.input)
 
 			require.Error(t, err, "候補として受け入れられてしまいました")
+			var validationErr ValidationError
+			require.ErrorAs(t, err, &validationErr)
+			require.Equal(t, tt.wantField, validationErr.Field)
 		})
 	}
 }

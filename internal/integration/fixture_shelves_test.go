@@ -29,9 +29,9 @@ func TestFixtureShelves(t *testing.T) {
 		name string
 		want string
 	}{
-		{name: "nested-config", want: "misplaced config.toml"},
-		{name: "missing-required", want: "title"},
-		{name: "unknown-config-value", want: "unknown genre"},
+		{name: "nested-config", want: "nested/config.toml: misplaced config.toml"},
+		{name: "missing-required", want: "book.toml: title"},
+		{name: "unknown-config-value", want: "book.toml: genre: unknown genre"},
 	}
 
 	for _, tt := range tests {
