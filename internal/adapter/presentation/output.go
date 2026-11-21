@@ -59,7 +59,7 @@ func Write(out io.Writer, output application.Output) {
 	if len(output.Table.Headers) == 0 {
 		return
 	}
-	writeTable(out, output.Table)
+	writeTable(out, output.Table, output.Detail)
 }
 
 // Writes a compact user-facing error.
@@ -70,7 +70,7 @@ func WriteError(out io.Writer, err error) {
 	fmt.Fprintln(out, err.Error())
 }
 
-func writeTable(out io.Writer, result application.Table) {
+func writeTable(out io.Writer, result application.Table, detail bool) {
 	fmt.Fprintln(out, titleStyle.Render("Shelvia books"))
 	fmt.Fprintln(out, summaryStyle.Render(strconv.Itoa(len(result.Rows))+" row(s)"))
 	fmt.Fprintln(out)
@@ -79,18 +79,22 @@ func writeTable(out io.Writer, result application.Table) {
 		Border(lipgloss.RoundedBorder()).
 		BorderStyle(borderStyle).
 		Headers(result.Headers...).
-		Rows(normalizeRows(result.Rows)...).
+		Rows(normalizeRows(result.Rows, detail)...).
 		StyleFunc(tableStyle)
 
 	fmt.Fprintln(out, rendered)
 }
 
-func normalizeRows(rows [][]string) [][]string {
+func normalizeRows(rows [][]string, detail bool) [][]string {
 	normalized := make([][]string, len(rows))
 	for i, row := range rows {
 		normalized[i] = make([]string, len(row))
 		for j, value := range row {
-			normalized[i][j] = printableCell(value)
+			if detail {
+				normalized[i][j] = value
+			} else {
+				normalized[i][j] = printableCell(value)
+			}
 		}
 	}
 	return normalized

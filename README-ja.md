@@ -1,6 +1,6 @@
 # Shelvia
 
-Shelvia は、読書記録を自分の手元で管理するための CLI ツールです。1 冊ごとの記録を TOML ファイルとして保存し、コマンドラインから検証、一覧表示、検索を行えます。
+Shelvia は、読書記録を自分の手元で管理するための CLI ツールです。読了した本を対象に、1 冊ごとの記録を TOML ファイルとして保存し、コマンドラインから検証、一覧表示、検索を行えます。未読や読書中の本は対象外です。
 
 読書データは、アプリ専用のデータベースではなく、エディタでそのまま読めるプレーンテキストとして残ります。Git で履歴を管理でき、`grep` や `find` でも探せます。そのうえで、評価、読了日、ジャンル、出版社、レーベルなどの項目を使って、あとから検索が可能です。
 
@@ -64,11 +64,11 @@ shelvia add "Some Book" --date 2024-01-01
 
 ```toml
 title = "Some Book"
-author = "Some Author"
+author = ["Some Author"]
 rating = 90
 read_date = 2024-01-01
 
-genre = "Novel"
+genre = ["Novel"]
 edition = "Paperback"
 imprint = "Example Paperback"
 publisher = "Example Publisher"
@@ -145,7 +145,7 @@ shelvia search 'rating >= 90' --format csv > selected.csv
 shelvia export > all-books.csv
 ```
 
-CSV にはヘッダーが付き、未指定の任意項目は空欄になります。`export` には感想を含む書籍データが入ります。設定ファイルと TOML のコメントは含まれません。
+CSV にはヘッダーが付き、未指定の任意項目は空欄になります。配列である `translator` は未指定の場合 `[]` になります。`export` には感想を含む書籍データが入ります。設定ファイルと TOML のコメントは含まれません。
 
 1 冊の詳細を表示するには、ファイル名ではなくファイル内の `title` を指定します。
 
@@ -162,6 +162,8 @@ shelvia path "Some Book"
 同じ `title` の書籍が複数ある場合、`show` と `path` はエラーにし、該当するファイルパスを候補として表示します。
 
 ## データ形式
+
+初回リリースでは、1 冊の記録に読了日を 1 つ保存します。再読ごとの履歴は扱いません。
 
 書籍ファイルは TOML で記述します。必須項目は次のとおりです。
 
@@ -182,6 +184,8 @@ shelvia path "Some Book"
 - `thoughts.body`
 
 `rating` は `0` から `100` の整数です。`read_date` は TOML の日付として書きます。`genre`、`publisher`、`edition`、`imprint` は `config.toml` と照合します。
+
+`author` と `genre` は１件以上の文字列を含む配列です。`translator` は任意の文字列配列です。各要素に空文字は指定できません。従来の文字列形式も読み込めます。検索では配列の各要素を照合します。CSV の配列項目は JSON 配列として１セルに出力します。
 
 任意項目は省略できます。任意項目に空文字を書いた場合も、未指定と同じ扱いになります。
 

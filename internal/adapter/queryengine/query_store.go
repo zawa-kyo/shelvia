@@ -1,8 +1,10 @@
 package queryengine
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -83,8 +85,10 @@ func compareByColumn(left, right domain.Book, column string) int {
 		return left.Rating().Int() - right.Rating().Int()
 	case "read_date":
 		return left.ReadDate().Time().Compare(right.ReadDate().Time())
+	case "author", "genre", "translator":
+		return slices.Compare(leftRow.arrays[column], rightRow.arrays[column])
 	default:
-		return strings.Compare(leftRow[column], rightRow[column])
+		return strings.Compare(leftRow.scalars[column], rightRow.scalars[column])
 	}
 }
 
@@ -95,28 +99,38 @@ func tableFromBooks(books []domain.Book) application.Table {
 			book.ReadDate().String(),
 			strconv.Itoa(book.Rating().Int()),
 			book.Title().String(),
-			book.Author().String(),
-			book.Genre().String(),
+			jsonArray(book.Authors()),
+			jsonArray(book.Genres()),
 			book.Publisher().String(),
 		}
 	}
 	return application.Table{Headers: headers, Rows: rows}
 }
 
-func rowFromBook(book domain.Book) map[string]string {
-	row := map[string]string{
-		"title":      book.Title().String(),
-		"author":     book.Author().String(),
-		"rating":     strconv.Itoa(book.Rating().Int()),
-		"read_date":  book.ReadDate().String(),
-		"genre":      book.Genre().String(),
-		"publisher":  book.Publisher().String(),
-		"edition":    optionalControlled(book.Edition().IsSpecified(), book.Edition().String()),
-		"imprint":    optionalControlled(book.Imprint().IsSpecified(), book.Imprint().String()),
-		"series":     optionalText(book.Series()),
-		"translator": optionalText(book.Translator()),
+func jsonArray(values []string) string {
+	if values == nil {
+		values = []string{}
 	}
-	return row
+	data, _ := json.Marshal(values)
+	return string(data)
+}
+
+type queryRow struct {
+	scalars map[string]string
+	arrays  map[string][]string
+}
+
+func rowFromBook(book domain.Book) queryRow {
+	return queryRow{
+		scalars: map[string]string{
+			"title": book.Title().String(), "rating": strconv.Itoa(book.Rating().Int()),
+			"read_date": book.ReadDate().String(), "publisher": book.Publisher().String(),
+			"edition": optionalControlled(book.Edition().IsSpecified(), book.Edition().String()),
+			"imprint": optionalControlled(book.Imprint().IsSpecified(), book.Imprint().String()),
+			"series":  optionalText(book.Series()),
+		},
+		arrays: map[string][]string{"author": book.Authors(), "genre": book.Genres(), "translator": book.Translators()},
+	}
 }
 
 func optionalControlled(specified bool, value string) string {
@@ -134,7 +148,7 @@ func optionalText(text domain.OptionalText) string {
 }
 
 type expr interface {
-	eval(row map[string]string) (truthValue, error)
+	eval(row queryRow) (truthValue, error)
 }
 
 type truthValue uint8
@@ -151,8 +165,12 @@ type comparison struct {
 	value  string
 }
 
-func (node comparison) eval(row map[string]string) (truthValue, error) {
-	left := row[node.column]
+func (node comparison) eval(row queryRow) (truthValue, error) {
+	left := row.scalars[node.column]
+	values, isArray := row.arrays[node.column]
+	if isArray && len(values) > 0 {
+		left = "present"
+	}
 	if node.op == "is null" {
 		return truthFromBool(left == ""), nil
 	}
@@ -161,6 +179,22 @@ func (node comparison) eval(row map[string]string) (truthValue, error) {
 	}
 	if left == "" {
 		return truthUnknown, nil
+	}
+	if isArray {
+		matched := false
+		for _, value := range values {
+			if node.op == "like" {
+				matched = matched || like(value, node.value)
+			} else if node.op == "!=" {
+				matched = matched || value == node.value
+			} else {
+				matched = matched || compareString(value, node.value, node.op)
+			}
+		}
+		if node.op == "!=" {
+			matched = !matched
+		}
+		return truthFromBool(matched), nil
 	}
 	if node.column == "rating" {
 		leftNumber, err := strconv.Atoi(left)
@@ -184,7 +218,7 @@ type logical struct {
 	left, right expr
 }
 
-func (node logical) eval(row map[string]string) (truthValue, error) {
+func (node logical) eval(row queryRow) (truthValue, error) {
 	left, err := node.left.eval(row)
 	if err != nil {
 		return truthFalse, err
@@ -221,7 +255,7 @@ type negation struct {
 	inner expr
 }
 
-func (node negation) eval(row map[string]string) (truthValue, error) {
+func (node negation) eval(row queryRow) (truthValue, error) {
 	value, err := node.inner.eval(row)
 	if err != nil || value == truthUnknown {
 		return value, err

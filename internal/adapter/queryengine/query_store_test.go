@@ -13,9 +13,9 @@ func TestStoreList(t *testing.T) {
 	t.Run("read_date descとtitle ascで表示列を返す", func(t *testing.T) {
 		books := testBooks(t)
 		wantRows := [][]string{
-			{"2024-01-02", "90", "Alpha", "Author A", "Novel", "Example Publisher"},
-			{"2024-01-02", "70", "Beta", "Author B", "Technical", "Example Publisher"},
-			{"2024-01-01", "80", "Gamma", "Author C", "Novel", "Example Publisher"},
+			{"2024-01-02", "90", "Alpha", `["Author A"]`, `["Novel"]`, "Example Publisher"},
+			{"2024-01-02", "70", "Beta", `["Author B"]`, `["Technical"]`, "Example Publisher"},
+			{"2024-01-01", "80", "Gamma", `["Author C"]`, `["Novel"]`, "Example Publisher"},
 		}
 
 		table, err := Store{}.List(books)
@@ -23,6 +23,18 @@ func TestStoreList(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, wantRows, table.Rows)
 	})
+}
+
+func TestOrderArrayUsesValues(t *testing.T) {
+	allowed, err := domain.NewAllowedValues(domain.AllowedValuesInput{Genres: []string{"Novel"}, Publishers: []string{"Example Publisher"}, Imprints: []string{"Example Paperback"}, Editions: []domain.EditionInput{{Name: "Paperback", ImprintRequired: true}}})
+	require.NoError(t, err)
+	books := []domain.Book{
+		mustBook(t, allowed, "Letter", "A", 80, "2024-01-01", "Novel", ""),
+		mustBook(t, allowed, "Symbol", "<", 80, "2024-01-01", "Novel", ""),
+	}
+	table, err := (Store{}).Query(books, "rating >= 0 order by author")
+	require.NoError(t, err)
+	require.Equal(t, []string{"Symbol", "Letter"}, titles(table.Rows))
 }
 
 func TestStoreQuery(t *testing.T) {
@@ -130,16 +142,20 @@ func mustBook(t *testing.T, allowed domain.AllowedValues, title, author string, 
 	readDate, err := time.Parse("2006-01-02", date)
 	require.NoError(t, err)
 
+	translators := []string{}
+	if translator != "" {
+		translators = append(translators, translator)
+	}
 	book, err := domain.NewBook(domain.BookDraft{
-		Title:      title,
-		Author:     author,
-		Rating:     intPointer(rating),
-		ReadDate:   readDate,
-		Genre:      genre,
-		Publisher:  "Example Publisher",
-		Edition:    "Paperback",
-		Imprint:    "Example Paperback",
-		Translator: translator,
+		Translators: translators,
+		Title:       title,
+		Authors:     []string{author},
+		Rating:      intPointer(rating),
+		ReadDate:    readDate,
+		Genres:      []string{genre},
+		Publisher:   "Example Publisher",
+		Edition:     "Paperback",
+		Imprint:     "Example Paperback",
 	}, allowed)
 	require.NoError(t, err)
 

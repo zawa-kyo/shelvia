@@ -28,20 +28,23 @@ type EditionData struct {
 
 // Raw book data loaded from a TOML book file.
 type BookData struct {
-	Path      string
-	Title     string
-	Author    string
-	Rating    *int
-	ReadDate  time.Time
-	Genre     string
+	Authors     []string
+	Genres      []string
+	Translators []string
+	Path        string
+	Title       string
+
+	Rating   *int
+	ReadDate time.Time
+
 	Publisher string
 	Edition   string
 	Imprint   string
 
-	Series     string
-	Translator string
-	Summary    string
-	Body       string
+	Series string
+
+	Summary string
+	Body    string
 }
 
 // Reads and writes shelf files without exposing filesystem details.

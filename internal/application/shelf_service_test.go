@@ -22,7 +22,7 @@ func TestServiceRunValidate(t *testing.T) {
 
 	t.Run("domain validation errorにはファイルパスを付ける", func(t *testing.T) {
 		data := validShelfData()
-		data.Books[0].Genre = "Unknown"
+		data.Books[0].Genres = []string{"Unknown"}
 		service := NewService(fakeShelf{data: data}, fakeQuery{})
 		command := Command{Kind: Validate, ShelfRoot: "shelf"}
 
@@ -169,10 +169,10 @@ func validShelfData() ShelfData {
 			{
 				Path:      "B.toml",
 				Title:     "B",
-				Author:    "Author B",
+				Authors:   []string{"Author B"},
 				Rating:    intPointer(90),
 				ReadDate:  time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC),
-				Genre:     "Novel",
+				Genres:    []string{"Novel"},
 				Publisher: "Example Publisher",
 				Edition:   "Paperback",
 				Imprint:   "Example Paperback",
@@ -180,10 +180,10 @@ func validShelfData() ShelfData {
 			{
 				Path:      "A.toml",
 				Title:     "A",
-				Author:    "Author A",
+				Authors:   []string{"Author A"},
 				Rating:    intPointer(80),
 				ReadDate:  time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
-				Genre:     "Technical",
+				Genres:    []string{"Technical"},
 				Publisher: "Example Publisher",
 			},
 		},

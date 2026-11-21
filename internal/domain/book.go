@@ -2,32 +2,62 @@ package domain
 
 import (
 	"fmt"
+	"strings"
 )
 
 // Aggregate root for a reading-log entry.
 type Book struct {
-	title      Title
-	author     Author
-	rating     Rating
-	readDate   ReadDate
-	genre      Genre
-	publisher  Publisher
-	edition    Edition
-	imprint    Imprint
-	series     OptionalText
-	translator OptionalText
-	summary    OptionalText
-	body       OptionalText
-	filePath   FilePath
+	authors     []string
+	genres      []string
+	translators []string
+	title       Title
+	rating      Rating
+	readDate    ReadDate
+	publisher   Publisher
+	edition     Edition
+	imprint     Imprint
+	series      OptionalText
+	summary     OptionalText
+	body        OptionalText
+	filePath    FilePath
 }
 
 // Creates a book and validates all domain invariants.
 func NewBook(draft BookDraft, allowed AllowedValues) (Book, error) {
-	title, err := NewTitle(draft.Title)
-	if err != nil {
-		return Book{}, err
+	if len(draft.Authors) == 0 {
+		return Book{}, validationError("author", "required")
 	}
-	author, err := NewAuthor(draft.Author)
+	authors := make([]string, 0, len(draft.Authors))
+	for _, value := range draft.Authors {
+		author, err := NewAuthor(value)
+		if err != nil {
+			return Book{}, err
+		}
+		authors = append(authors, author.String())
+	}
+	if len(draft.Genres) == 0 {
+		return Book{}, validationError("genre", "required")
+	}
+	genres := make([]string, 0, len(draft.Genres))
+	for _, value := range draft.Genres {
+		genre, err := NewGenre(value)
+		if err != nil {
+			return Book{}, err
+		}
+		if !allowed.ContainsGenre(genre) {
+			return Book{}, validationError("genre", fmt.Sprintf("unknown genre: %s", genre.String()))
+		}
+		genres = append(genres, genre.String())
+	}
+	translators := make([]string, 0, len(draft.Translators))
+	for _, value := range draft.Translators {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			return Book{}, validationError("translator", "must not be empty")
+		}
+		translators = append(translators, value)
+	}
+	title, err := NewTitle(draft.Title)
 	if err != nil {
 		return Book{}, err
 	}
@@ -41,13 +71,6 @@ func NewBook(draft BookDraft, allowed AllowedValues) (Book, error) {
 	readDate, err := NewReadDate(draft.ReadDate)
 	if err != nil {
 		return Book{}, err
-	}
-	genre, err := NewGenre(draft.Genre)
-	if err != nil {
-		return Book{}, err
-	}
-	if !allowed.ContainsGenre(genre) {
-		return Book{}, validationError("genre", fmt.Sprintf("unknown genre: %s", genre.String()))
 	}
 	publisher, err := NewPublisher(draft.Publisher)
 	if err != nil {
@@ -83,30 +106,29 @@ func NewBook(draft BookDraft, allowed AllowedValues) (Book, error) {
 	}
 
 	return Book{
-		title:      title,
-		author:     author,
-		rating:     rating,
-		readDate:   readDate,
-		genre:      genre,
-		publisher:  publisher,
-		edition:    edition,
-		imprint:    imprint,
-		series:     NewOptionalText(draft.Series),
-		translator: NewOptionalText(draft.Translator),
-		summary:    NewOptionalText(draft.Summary),
-		body:       NewOptionalText(draft.Body),
-		filePath:   NewFilePath(draft.FilePath),
+		authors:     authors,
+		genres:      genres,
+		translators: translators,
+		title:       title,
+		rating:      rating,
+		readDate:    readDate,
+		publisher:   publisher,
+		edition:     edition,
+		imprint:     imprint,
+		series:      NewOptionalText(draft.Series),
+		summary:     NewOptionalText(draft.Summary),
+		body:        NewOptionalText(draft.Body),
+		filePath:    NewFilePath(draft.FilePath),
 	}, nil
 }
+
+func (book Book) Authors() []string     { return append([]string(nil), book.authors...) }
+func (book Book) Genres() []string      { return append([]string(nil), book.genres...) }
+func (book Book) Translators() []string { return append([]string(nil), book.translators...) }
 
 // Returns the book title.
 func (book Book) Title() Title {
 	return book.title
-}
-
-// Returns the book author.
-func (book Book) Author() Author {
-	return book.author
 }
 
 // Returns the book rating.
@@ -117,11 +139,6 @@ func (book Book) Rating() Rating {
 // Returns the date when the book was read.
 func (book Book) ReadDate() ReadDate {
 	return book.readDate
-}
-
-// Returns the book genre.
-func (book Book) Genre() Genre {
-	return book.genre
 }
 
 // Returns the book publisher.
@@ -142,11 +159,6 @@ func (book Book) Imprint() Imprint {
 // Returns the optional series text.
 func (book Book) Series() OptionalText {
 	return book.series
-}
-
-// Returns the optional translator text.
-func (book Book) Translator() OptionalText {
-	return book.translator
 }
 
 // Returns the optional short thoughts text.

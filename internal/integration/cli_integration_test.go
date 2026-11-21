@@ -100,6 +100,63 @@ func TestCSVOutput(t *testing.T) {
 	}
 }
 
+func TestMultipleValues(t *testing.T) {
+	root := t.TempDir()
+	service := application.NewService(localfs.Repository{}, queryengine.Store{})
+	require.NoError(t, localfs.Repository{}.Init(root))
+	data := `title = "Collaboration"
+author = ["Alice, A", "Bob"]
+genre = ["Novel"]
+translator = ["Taro", "Jiro"]
+rating = 90
+read_date = 2024-01-02
+publisher = "Example Publisher"
+`
+	require.NoError(t, os.WriteFile(filepath.Join(root, "book.toml"), []byte(data), 0o644))
+	t.Setenv("SHELVIA_DIR", root)
+	for _, condition := range []string{`author = "Bob"`, `translator = "Jiro"`, `genre = "Novel"`, `author != "Alice, A"`} {
+		code, stdout, stderr := runCLI(service, "search", condition, "--format", "csv")
+		require.Equal(t, 0, code, stderr)
+		if condition == `author != "Alice, A"` {
+			require.NotContains(t, stdout, "Collaboration")
+		} else {
+			require.Contains(t, stdout, "Collaboration")
+		}
+	}
+	code, stdout, stderr := runCLI(service, "export")
+	require.Equal(t, 0, code, stderr)
+	rows, err := csv.NewReader(strings.NewReader(stdout)).ReadAll()
+	require.NoError(t, err)
+	for _, row := range rows {
+		if row[0] == "Collaboration" {
+			require.Equal(t, `["Alice, A","Bob"]`, row[1])
+			require.Equal(t, `["Taro","Jiro"]`, row[9])
+			return
+		}
+	}
+	t.Fatal("export did not include Collaboration")
+}
+
+func TestShowDisplaysCompleteDetails(t *testing.T) {
+	root := t.TempDir()
+	service := application.NewService(localfs.Repository{}, queryengine.Store{})
+	require.NoError(t, localfs.Repository{}.Init(root))
+	data := `title = "Long Details"
+author = ["A very long author name", "Another very long author name"]
+genre = ["Novel"]
+translator = ["A very long translator name", "Another long translator name"]
+rating = 90
+read_date = 2024-01-02
+publisher = "Example Publisher"
+`
+	require.NoError(t, os.WriteFile(filepath.Join(root, "book.toml"), []byte(data), 0o644))
+	t.Setenv("SHELVIA_DIR", root)
+	code, stdout, stderr := runCLI(service, "show", "Long Details")
+	require.Equal(t, 0, code, stderr)
+	require.Contains(t, stdout, "Another very long author name")
+	require.Contains(t, stdout, "Another long translator name")
+}
+
 func validBookTOML(title string) string {
 	return `title = "` + title + `"
 author = "Some Author"

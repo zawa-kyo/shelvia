@@ -26,10 +26,10 @@ func testAllowedValues(t *testing.T) AllowedValues {
 func validBookDraft() BookDraft {
 	return BookDraft{
 		Title:     "Some Book",
-		Author:    "Some Author",
+		Authors:   []string{"Some Author"},
 		Rating:    intPointer(90),
 		ReadDate:  time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC),
-		Genre:     "Novel",
+		Genres:    []string{"Novel"},
 		Publisher: "Example Publisher",
 		Edition:   "Paperback",
 		Imprint:   "Example Paperback",
@@ -51,15 +51,15 @@ func TestBookRecord(t *testing.T) {
 		require.NoError(t, err, "本を記録できませんでした")
 
 		require.Equal(t, "Some Book", book.Title().String())
-		require.Equal(t, "Some Author", book.Author().String())
+		require.Equal(t, "Some Author", book.Authors()[0])
 		require.Equal(t, 90, book.Rating().Int())
 		require.Equal(t, "2024-01-02", book.ReadDate().String())
-		require.Equal(t, "Novel", book.Genre().String())
+		require.Equal(t, "Novel", book.Genres()[0])
 		require.Equal(t, "Example Publisher", book.Publisher().String())
 		require.True(t, book.Edition().IsSpecified(), "判型が記録されていません")
 		require.True(t, book.Imprint().IsSpecified(), "レーベルが記録されていません")
 		require.False(t, book.Series().IsSpecified(), "空のシリーズは未指定として扱われるべきです")
-		require.False(t, book.Translator().IsSpecified(), "空の訳者は未指定として扱われるべきです")
+		require.False(t, len(book.Translators()) > 0, "空の訳者は未指定として扱われるべきです")
 		require.False(t, book.Summary().IsSpecified(), "空のひとことメモは未指定として扱われるべきです")
 		require.False(t, book.Body().IsSpecified(), "空の感想本文は未指定として扱われるべきです")
 	})
@@ -74,6 +74,25 @@ func TestBookRecord(t *testing.T) {
 		require.NoError(t, err, "本を記録できませんでした")
 		require.Equal(t, 0, book.Rating().Int())
 	})
+}
+
+func TestMultipleValues(t *testing.T) {
+	draft := validBookDraft()
+	draft.Authors = []string{" Alice ", "Bob"}
+	draft.Genres = []string{"Novel", "Technical"}
+	draft.Translators = []string{"Taro", "Jiro"}
+	book, err := NewBook(draft, testAllowedValues(t))
+	require.NoError(t, err)
+	require.Equal(t, []string{"Alice", "Bob"}, book.Authors())
+	require.Equal(t, []string{"Novel", "Technical"}, book.Genres())
+	require.Equal(t, []string{"Taro", "Jiro"}, book.Translators())
+	draft.Genres = []string{"Novel", "Unknown"}
+	_, err = NewBook(draft, testAllowedValues(t))
+	require.ErrorContains(t, err, "unknown genre")
+	draft.Genres = []string{"Novel"}
+	draft.Translators = []string{"Taro", " "}
+	_, err = NewBook(draft, testAllowedValues(t))
+	require.ErrorContains(t, err, "translator")
 }
 
 func TestEditionAndImprint(t *testing.T) {
@@ -109,7 +128,7 @@ func TestOptionalFields(t *testing.T) {
 		draft.Edition = ""
 		draft.Imprint = ""
 		draft.Series = ""
-		draft.Translator = ""
+		draft.Translators = nil
 		draft.Summary = ""
 		draft.Body = ""
 		draft.FilePath = ""
@@ -121,7 +140,7 @@ func TestOptionalFields(t *testing.T) {
 		require.False(t, book.Edition().IsSpecified(), "判型は未指定として扱われるべきです")
 		require.False(t, book.Imprint().IsSpecified(), "レーベルは未指定として扱われるべきです")
 		require.False(t, book.Series().IsSpecified(), "シリーズは未指定として扱われるべきです")
-		require.False(t, book.Translator().IsSpecified(), "訳者は未指定として扱われるべきです")
+		require.False(t, len(book.Translators()) > 0, "訳者は未指定として扱われるべきです")
 		require.False(t, book.Summary().IsSpecified(), "ひとことメモは未指定として扱われるべきです")
 		require.False(t, book.Body().IsSpecified(), "感想本文は未指定として扱われるべきです")
 		require.Empty(t, book.FilePath().String())
@@ -130,7 +149,7 @@ func TestOptionalFields(t *testing.T) {
 	t.Run("任意項目に書いた内容は読書記録に残る", func(t *testing.T) {
 		draft := validBookDraft()
 		draft.Series = "Series Name"
-		draft.Translator = "Some Translator"
+		draft.Translators = []string{"Some Translator"}
 		draft.Summary = "短い感想"
 		draft.Body = "長い感想"
 		draft.FilePath = "books/some-book.toml"
@@ -140,7 +159,7 @@ func TestOptionalFields(t *testing.T) {
 
 		require.NoError(t, err, "本を記録できませんでした")
 		require.Equal(t, "Series Name", book.Series().String())
-		require.Equal(t, "Some Translator", book.Translator().String())
+		require.Equal(t, "Some Translator", book.Translators()[0])
 		require.Equal(t, "短い感想", book.Summary().String())
 		require.Equal(t, "長い感想", book.Body().String())
 		require.Equal(t, "books/some-book.toml", book.FilePath().String())
@@ -174,7 +193,7 @@ func TestInvalidBookRecord(t *testing.T) {
 		{
 			name: "著者名のない本は記録できない",
 			mutate: func(draft *BookDraft) {
-				draft.Author = ""
+				draft.Authors = nil
 			},
 			wantField: "author",
 		},
@@ -195,7 +214,7 @@ func TestInvalidBookRecord(t *testing.T) {
 		{
 			name: "知らないジャンルの本は記録できない",
 			mutate: func(draft *BookDraft) {
-				draft.Genre = "Mystery"
+				draft.Genres = []string{"Mystery"}
 			},
 			wantField:  "genre",
 			wantReason: "unknown genre",
@@ -203,7 +222,7 @@ func TestInvalidBookRecord(t *testing.T) {
 		{
 			name: "ジャンルのない本は記録できない",
 			mutate: func(draft *BookDraft) {
-				draft.Genre = ""
+				draft.Genres = nil
 			},
 			wantField: "genre",
 		},

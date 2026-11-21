@@ -51,7 +51,7 @@ my-shelf/
 
 `list` と `search` は `--format csv` で同じ列と順序の CSV を標準出力に出力します。`--format table` または省略時は画面向けの表を表示します。CSV では値を省略せず、ヘッダーを出力し、該当する書籍がない場合もヘッダーを出力します。
 
-`export` は検証済みの全書籍を CSV で標準出力に出力します。列は `title`、`author`、`rating`、`read_date`、`genre`、`publisher`、`edition`、`imprint`、`series`、`translator`、`thoughts.summary`、`thoughts.body` の順です。未指定の任意項目は空欄です。CSV は書籍データの出力であり、設定ファイルや TOML のコメントは含みません。
+`export` は検証済みの全書籍を CSV で標準出力に出力します。列は `title`、`author`、`rating`、`read_date`、`genre`、`publisher`、`edition`、`imprint`、`series`、`translator`、`thoughts.summary`、`thoughts.body` の順です。未指定の任意項目は空欄ですが、`translator` は `[]` になります。CSV は書籍データの出力であり、設定ファイルや TOML のコメントは含みません。
 
 `show TITLE` は、ファイル名ではなくファイル内の `title` で書籍を 1 件特定し、詳細を表示します。該当なし、または同じ `title` が複数ある場合はエラーにします。複数ある場合は、該当するファイルパスを候補として表示します。
 
@@ -88,6 +88,8 @@ my-shelf/
 - `order by <column> [asc|desc]`
 
 文字列と日付はクォートされた文字列として指定します。日付は `YYYY-MM-DD` 形式で比較します。任意項目の空文字は未指定と同じ扱いになるため、検索ビュー上では `null` として扱います。`null` を含む条件は SQL と同じ三値論理で評価し、結果が真になる行だけを返します。
+
+`author`、`genre`、`translator` は文字列の配列です。`author` と `genre` は１件以上を必須とし、`translator` は省略または空配列を許します。配列要素の空文字は拒否します。従来の文字列形式も１要素として読み込みます。配列の比較は各要素に適用し、`=` や `like` などは１つでも一致すれば真、`!=` はいずれの要素とも一致しなければ真です。空の `translator` は `null` として扱います。配列の並び替えは、先頭から各要素を文字列順に比較します。CSV の配列項目は JSON 配列として１セルに出力します。
 
 初回リリースでは、次のような構文を拒否します。
 

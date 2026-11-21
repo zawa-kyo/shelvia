@@ -35,5 +35,6 @@ type Table struct {
 // Output is the presentation-neutral command result.
 type Output struct {
 	Message string
+	Detail  bool
 	Table   Table
 }
