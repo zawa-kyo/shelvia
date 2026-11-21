@@ -1,24 +1,34 @@
 # Implementation
 
-## Layering
+本書は Shelvia のレイヤー構造、ディレクトリ配置、各層の責務、および依存関係のルールを定義します。
 
-実装は小さなレイヤーに分けます。
+## レイヤー構成と依存規則
+
+Shelvia は Clean Architecture を採用し、外部入出力の境界には Ports and Adapters (Hexagonal Architecture) パターンを適用します。
 
 ```text
-outer
-  CLI / local filesystem / query engine / presentation
-    -> application
-      -> domain
-inner
+[外側]
+  CLI / localfs / queryengine / presentation (Adapters)
+    ↓
+  Application (Use Cases & Ports)
+    ↓
+  Domain (Entities, Value Objects & Domain Rules)
+[内側]
 ```
 
-依存方向は外側から内側へ向けます。内側の domain は外側の実装詳細を知りません。
-Application は ports を定義し、外側の adapters がそれを実装します。
+### 依存規則
 
-## Directory Structure
+- **単方向の内側依存**: 依存関係は外側から内側へ向かい、内側のドメイン層およびアプリケーション層は外側の具象実装 (ファイルシステム、SQLite、CLI 引数パーサーなど) を一切参照しません。
+- **Ports & Adapters**: アプリケーション層が必要な外部操作をポート (インターフェース) として定義し、外側のアダプター層がそれを実装します。
+- **禁止事項**:
+  - `internal/domain` から `internal/application` や `internal/adapter` への依存
+  - `internal/application` から `internal/adapter` への依存
+  - `internal/adapter/queryengine` の内部型 (SQLite 固有の型など) をドメインやアプリケーション層へ漏洩させること
+  - CLI パーサーの都合 (フラグ解析用構造体など) をドメインモデルに持ち込むこと
 
-Go 実装では、Clean Architecture の境界を `internal/` 配下に置きます。
-初回リリースでは過度に細かく分けず、外側の adapter と内側の domain/application が見分けられる粒度に留めます。
+## ディレクトリ構成
+
+初期リリースでは過度なパッケージ細分化を避け、Clean Architecture の境界が明確に保たれる最小限の粒度で構成します。
 
 ```text
 .
@@ -78,129 +88,64 @@ Go 実装では、Clean Architecture の境界を `internal/` 配下に置きま
 └── AGENTS.md
 ```
 
-各ディレクトリの責務は次のとおりです。
+## 各レイヤーの責務
 
-- `cmd/shelvia`: 実行可能ファイルの入口。依存の組み立てだけを行い、業務ロジックを持たない
-- `internal/domain`: `Book` aggregate root/entity、構築用 raw input、設定由来の許可値集合、値オブジェクト、純粋な検証ルール
-- `internal/application`: use case と port 定義。domain と port interface にだけ依存する
-- `internal/adapter/cli`: コマンドライン引数を application command に変換する
-- `internal/adapter/localfs`: OS のファイルシステム上にある shelf の discovery、`config.toml` 読み込み、テンプレート作成
-- `internal/adapter/queryengine`: 検証済み書籍から一時的な検索ビューを作り、query port を実装する
-- `internal/adapter/presentation`: 成功・失敗・検索結果の表示整形
-- `docs`: エージェントと実装者向けの設計文書
-- `fixtures/shelves`: tests、README、手動確認で読み込ませる shelf fixtures
+### `cmd/shelvia`
 
-依存方向は次の形に固定します。
+アプリケーションのエントリーポイントです。CLI 引数の受け取り、各アダプターの生成、依存関係の注入 (DI)、および実行のみを担当し、ビジネスロジックは一切持ちません。
 
-```text
-cmd/shelvia
-  -> internal/adapter/*
-    -> internal/application
-      -> internal/domain
-```
+### `internal/domain`
 
-禁止する依存は次のとおりです。
+書籍および設定ファイルに由来するコアビジネスルールと不変条件を保持します。
 
-- `internal/domain` から `internal/application` や `internal/adapter` へ依存しない
-- `internal/application` から `internal/adapter` へ依存しない
-- `internal/adapter/queryengine` の内部型を domain や application の公開型に混ぜない
-- CLI parser の都合を domain の型や validation に持ち込まない
+- **`Book`**: 書籍記録を表す Entity / Aggregate Root。一意な識別とライフサイクルを持ちます。
+- **`BookDraft`**: TOML から抽出された未検証の入力データを表す構造体。`Book` を構築するための中間データであり、永続的な同一性は持ちません。
+- **`AllowedValues`**: `config.toml` から読み込まれたジャンル、出版社、判型、レーベルなどの許可値セット。ドメイン層の照合に利用します (TOML のスキーマ定義自体はアダプター層に隠蔽します)。
+- **Value Objects (`Title`, `Author`, `Rating`, `ReadDate`, `Genre`, etc.)**: 各属性の制約 (値の範囲、空文字禁止など) を自己検証する不変オブジェクト。
+- **パッケージ設計方針**: `internal/domain` は技術的な分類 (`value_objects/` など) で細分化せず、1 つの Go パッケージ内に保ちます。将来分割が必要になった場合は、ドメイン概念単位 (`internal/domain/book` など) での分割を検討します。
 
-小さいうちは package を増やしすぎません。新しい adapter や service は、重複を減らすか依存境界を守る必要が出た時点で追加します。
+### `internal/application`
+
+ユースケースの調停と実行フローの制御を行います。
+
+- コマンド (`validate`, `list`, `search`, `add`, `init` など) の実行オーケストレーション
+- ポートインターフェース (`ShelfRepository`, `QueryStore` など) の定義
+- ファイル上書きの禁止判定 (`init` や `add` での既存ファイル衝突防止)
+- 具体的なストレージやクエリエンジンには依存せず、ドメインモデルとポートのみを操作します。
+
+### `internal/adapter/cli`
+
+OS のコマンドライン引数を解析し、アプリケーション層のコマンドオブジェクトに変換して実行を委譲します。
+
+### `internal/adapter/localfs`
+
+ローカルファイルシステム上の `shelf root` の探索、ファイル入出力を担当します。
+
+- `shelf root` 配下の `.toml` ファイルの再帰的探索
+- `config.toml` の読み込みと構文解析
+- `init` による初期ファイル (`config.toml`, `example.toml`) の書き出し
+- `add` によるテンプレート作成と、OS 非依存の安全なファイル名バリデーション
+- エラー診断時にユーザーが直感的に修正できるよう、相対パスや行番号を保持します。
+
+### `internal/adapter/queryengine`
+
+検証済みの書籍コレクションからインメモリの一時的な検索ビューを構築し、アプリケーション層の検索ポートを実装します。
+
+- 内部実装として SQLite を利用しますが、パッケージ名やインターフェースに「SQLite」という技術名を漏らしません。
+- `search` コマンドで受け取った SQL ライクなクエリフラグメントを、[CLI Behavior](./cli-behavior.md) で定義された許可範囲内に収まっているか事前に検証し、不正な構文を拒否します。
+
+### `internal/adapter/presentation`
+
+コマンドの実行結果を端末向けに整形して出力します。
+
+- `validate` の成否 (件数またはエラー箇所) のメッセージ整形
+- `list` および `search` のテーブル表示、CSV 出力
+- `show` による詳細情報表示、`path` によるファイルパス表示
 
 ## Fixture Shelves
 
-`fixtures/` は、Shelvia が実際に読み込む shelf の fixture を置くために使います。mock implementation とは用途を分け、`fixtures/shelves/` 配下に shelf root 単位で配置します。
+`fixtures/shelves/` は、結合テストや手動検証で利用する実際の shelf データを配置するディレクトリです。
 
-`fixtures/shelves/valid/` には成功する shelf を置きます。`minimal/` は README と同じ基本構成を保ち、`config.toml`、`example.toml`、追加の書籍 TOML を含めます。
-
-`fixtures/shelves/invalid/` には失敗を確認する shelf を置きます。各ディレクトリは 1 つの失敗理由だけを表し、テスト名から期待する診断が分かる名前にします。
-
-Fixture は production code から特別扱いしません。tests や手動確認では、通常の `shelf root` と同じように `fixtures/shelves/...` の各ディレクトリを読み込ませます。
-
-## Layer Responsibilities
-
-### CLI
-
-CLI レイヤーは、引数の解析、`shelf root` の解決、application へのコマンド委譲だけを担当します。書籍の意味的な検証や、TOML・SQLite の構造には踏み込みません。
-
-### Application
-
-Application レイヤーは、コマンドの流れを調停します。
-
-- `config.toml` を読み込む
-- 書籍ファイルを読み込む
-- domain ルールを検証する
-- 一時的な検索ビューを作る
-- コマンド出力を返す
-
-`init` が既存ファイルを上書きしない、`add` が既存の書籍ファイルを上書きしない、といったコマンド単位の判断は application が持ちます。将来 `--force` のようなオプションを追加する場合も、この層で扱います。
-
-Application は local filesystem や query engine の具象実装には依存しません。必要な操作は port として定義し、外側の adapter が実装します。
-
-### Domain
-
-Domain レイヤーは、書籍と設定ファイル由来の許可値に関するルールを所有します。
-
-`Book` は書籍記録の aggregate root/entity として扱います。`Book` 自体は value object ではありません。`BookDraft` は `Book` を構築するための raw input であり、domain model として永続的な同一性を持ちません。
-
-`AllowedValues` は、`config.toml` の raw schema ではなく、domain が照合に使う許可値集合です。書籍ファイルの TOML schema や設定ファイルの TOML schema は adapter 側に閉じ込めます。
-
-`Title`、`Author`、`Rating`、`ReadDate`、`Genre`、`Publisher`、`Edition`、`Imprint`、`OptionalText`、`FilePath` などは value object として扱います。Domain の型は基本的に value object が多いため、`*_value.go` のような suffix は付けません。`value_objects/` のような技術分類 package も初回実装では作りません。package を切る必要が出た場合は、`internal/domain/book` のように一緒に使うドメイン概念単位で分けます。
-
-- 必須項目が存在する
-- `author` と `genre` は 1 件以上、`translator` は 0 件以上の文字列であり、各要素は空でない
-- `rating` は `0` から `100` の整数である
-- `read_date` は TOML の日付である
-- `genre`、`publisher`、`edition`、`imprint` は設定ファイルの許可値と照合できる
-- `imprint` は `edition` なしでは指定できない
-- `edition.imprint_required = true` の場合は `imprint` が必須になる
-- 任意テキスト項目の空文字は未指定として扱う
-
-Domain は、local filesystem、query engine、端末表示、コマンドライン引数に依存しません。
-
-### Local Filesystem Adapter
-
-Local filesystem adapter は、OS のファイルシステム上にある shelf の読み書きを担当します。`.toml` 探索と `config.toml` の扱いは [CLI Behavior](./cli-behavior.md) に従います。
-
-- `init` のために `config.toml` と `example.toml` を作る
-- `add` のために 1 冊分の TOML テンプレートを作る
-- `add` のファイル名を OS 非依存に検証し、既存ファイルを上書きしない
-
-ファイル由来の診断では、`Some Book.toml` のようなユーザーに見えるパスを保持します。
-
-### Query Engine Adapter
-
-Query engine adapter は、検証済みの書籍からインメモリの検索ビューを作ります。初回実装では内部実装として SQLite を使ってよいですが、package 名には永続化方式やライブラリ名を出しません。SQLite は検索を助けるための一時ビューであり、永続化は行いません。
-
-`search` の条件は、検索ビューに適用する前に、[CLI Behavior](./cli-behavior.md) で定義した範囲に収まるかを検証します。対応範囲外の SQL 風 fragment は adapter 境界で拒否します。`order by` は単一カラムの並び替えだけを受け付け、複数カラム指定や `limit` などの追加句は扱いません。
-
-### Presentation
-
-Presentation レイヤーは、ユーザー向けの表示を担当します。`validate` の成功・失敗は、短く読みやすくします。
-
-成功例:
-
-```text
-Validated 1 book, 1 config file.
-```
-
-失敗例:
-
-```text
-Some Book.toml:5: unknown genre "Novel"
-```
-
-## Directory Structure Self Review
-
-`docs/implementation.md` のディレクトリ構成は、初回実装に入るための最小構成としては妥当です。ただし、次の点は意識して運用します。
-
-- `internal/domain` は package を細かく分けず、Go の 1 package として保つ。ファイルは DDD の概念単位に分ける
-- `Book` は value object ではなく aggregate root/entity として扱う。値の同一性だけで扱える型だけを value object にする
-- `book_draft.go` は構築用の raw input を表す。entity や value object と混同しない
-- `allowed_values.go` は設定ファイルの raw schema ではなく、domain が使う許可値集合を表す。TOML の形は adapter 側に閉じ込める
-- `value_objects/` package は初回実装では作らない。Go では package を技術分類ではなく一緒に使うドメイン概念で切る方が読みやすいため、必要になった場合は `internal/domain/book` のような概念単位の package を検討する
-- `internal/adapter/localfs` は OS ファイルシステム依存を表す名前として使う。shelf という業務語だけではなく、外部境界が local filesystem であることを明示する
-- `internal/adapter/queryengine` は application の query port を実装する adapter として命名する。内部で SQLite を使っても、application や domain に SQLite 名を漏らさない
-- `internal/adapter/presentation` は出力整形が増えた時点で `text` や `table` などに分ける余地があるが、初回リリースでは 1 package でよい
-- `fixtures/` は fixture shelf の置き場として使う。mock implementation が必要になった場合は、`fixtures/` に混ぜず、各 package の test helper か専用名に分ける
+- **`valid/`**: 正常に検証を通過する shelf。`minimal/` は `README` で示される基本構成を再現しています。
+- **`invalid/`**: 特定のバリデーション違反を検証するための shelf。1 ディレクトリにつき 1 つのエラー原因 (設定ファイル重複、必須項目欠落、未登録のジャンル、不正なファイル名など) を再現し、テスト名と対応させます。
+- **モックとの分離**: `fixtures/` は本物のファイル構造としてそのまま読み込ませるものであり、テストダブル (Mock/Fake) のコードとは明確に区別します。

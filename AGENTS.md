@@ -2,25 +2,25 @@
 
 ## Repository Map
 
-- User-facing project explanation lives in `README.md` and `README-ja.md`.
-- Implementation-facing design lives in `docs/`.
-- Start from `docs/architecture.md`, then follow the linked documents for CLI behavior, implementation structure, and testing strategy.
-- Keep `AGENTS.md` short. Treat it as a map to durable repository knowledge, not as a full manual.
-- Treat tracked README and `docs/` files as the source of truth. Do not use untracked `.idea/` content or old booklog materials as canonical specification.
+- **User documentation**: Maintained in `README.md` and `README-ja.md`.
+- **Architecture and design**: Maintained in `docs/`.
+  - Start with `docs/architecture.md`, then refer to the linked documents for CLI behavior, implementation details, and testing strategy.
+- Keep `AGENTS.md` brief—treat it as a navigation index to durable repository knowledge, not an exhaustive manual.
+- Tracked README and `docs/` files are the canonical specification. Disregard untracked `.idea/` content or legacy booklog materials.
 
-## Documentation
+## Documentation Guidelines
 
-- Keep `README.md` and `README-ja.md` synchronized. When one file changes, update the other in the same change unless the edit is intentionally language-specific.
-- `README-ja.md` should be written first when the intended wording is being designed in Japanese. Then sync the same user-facing behavior, commands, data format, and project status to `README.md` in natural English.
-- Keep README files focused on user-facing explanation: motivation, installation, usage, data format, and examples. Put implementation plans, migration notes, and architecture details in separate design documents.
-- Do not stage changes unless the user explicitly asks for staging. Editing files is allowed, but leave staging decisions to the user.
+- Keep `README.md` and `README-ja.md` synchronized. When updating one, update the other in the same change unless the edit is intentionally language-specific.
+- Draft changes in `README-ja.md` first when designing wording in Japanese, then reflect the same user-facing behavior, commands, data format, and project status in `README.md` in natural English.
+- README files must focus strictly on user-facing concerns: motivation, installation, usage, data format, and examples. Place implementation plans, migration notes, and architectural decisions in dedicated documents under `docs/`.
+- Do not stage git changes unless the user explicitly requests it. Editing files is permitted, but leave staging and committing to the user.
 
-## Architecture
+## Architecture Guidelines
 
-- Follow the architecture and invariants in `docs/architecture.md` when adding implementation.
-- Follow `docs/cli-behavior.md` for `shelf root`, `config.toml`, file discovery, and command behavior.
-- Follow `docs/implementation.md` for package layout, layer responsibilities, and dependency direction.
-- Follow `docs/testing.md` for the test strategy.
-- Use Clean Architecture as the default dependency rule. Domain code must not depend on CLI, local filesystem, query engine, or presentation details.
-- Update the relevant document in `docs/` in the same change when architectural decisions, command behavior, data flow, validation boundaries, or test strategy change.
-- Shelvia is a CLI tool, so design documentation should focus on architecture, command behavior, data format, validation, diagnostics, and test strategy rather than visual design.
+- Follow the Clean Architecture principles and invariants in `docs/architecture.md`:
+  - `docs/cli-behavior.md`: `shelf root` resolution, `config.toml`, file discovery, and command behavior.
+  - `docs/implementation.md`: Package layout, layer responsibilities, and dependency direction.
+  - `docs/testing.md`: Unit, integration, and E2E testing strategies.
+- Maintain inward dependency direction: domain code must never depend on the CLI, local filesystem, query engine, or presentation layers.
+- Update the relevant document in `docs/` whenever architectural decisions, command behavior, data flow, validation rules, or test strategies change.
+- Shelvia is a CLI tool; design documentation should prioritize architecture, command behavior, data formats, validation rules, diagnostics, and testing rather than visual design.
