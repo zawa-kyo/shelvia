@@ -1,6 +1,6 @@
 # Shelvia
 
-Shelvia is a CLI tool for managing your reading log on your own machine. It stores each book as a TOML file and lets you validate, list, and search your records from the command line.
+Shelvia is a CLI tool for managing your reading log on your own machine. It stores each completed book as a TOML file and lets you validate, list, and search your records from the command line. Unread books and books in progress are outside its scope.
 
 Your reading data is not locked inside an application database. It stays as plain text that you can read, edit, track with Git, and search with tools like `grep` and `find`. Shelvia adds structured validation and querying on top, so fields like rating, read date, genre, publisher, and imprint remain useful later.
 
