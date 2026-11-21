@@ -133,6 +133,29 @@ func TestRepositoryCreateBook(t *testing.T) {
 }
 
 func TestRepositoryLoad(t *testing.T) {
+	for _, field := range []string{"author", "genre", "translator"} {
+		for _, tt := range []struct {
+			name  string
+			value string
+			want  string
+		}{
+			{name: "文字列以外のスカラー値", value: "1", want: "expected a string or an array of strings"},
+			{name: "文字列以外を含む配列", value: `["Alice", 1]`, want: "expected an array of strings"},
+		} {
+			t.Run(field+"に"+tt.name+"を指定すると拒否する", func(t *testing.T) {
+				root := t.TempDir()
+				require.NoError(t, (Repository{}).Init(root))
+				subdir := filepath.Join(root, "2024")
+				require.NoError(t, os.Mkdir(subdir, 0o755))
+				require.NoError(t, os.WriteFile(filepath.Join(subdir, "Broken.toml"), []byte(field+" = "+tt.value), 0o644))
+
+				_, err := Repository{}.Load(root)
+
+				require.ErrorContains(t, err, "2024/Broken.toml: "+field+": "+tt.want)
+			})
+		}
+	}
+
 	t.Run("直下以外のconfig.tomlは誤配置として拒否する", func(t *testing.T) {
 		root := t.TempDir()
 		require.NoError(t, (Repository{}).Init(root))
