@@ -151,6 +151,16 @@ shelvia path "Some Book"
 
 If multiple books have the same `title`, `show` and `path` fail and print the matching file paths as candidates.
 
+Use CSV to export a list or search result. To export all fields for all books, use `export`.
+
+```bash
+shelvia list --format csv > books.csv
+shelvia search 'rating >= 90' --format csv > selected.csv
+shelvia export > all-books.csv
+```
+
+CSV output includes a header; unspecified optional fields are empty. `export` includes book data and thoughts, but not the config file or TOML comments.
+
 ## Data Format
 
 Book files are written in TOML. Required fields are:

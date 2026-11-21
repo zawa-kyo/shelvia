@@ -1,6 +1,7 @@
 package presentation
 
 import (
+	"encoding/csv"
 	"fmt"
 	"io"
 	"strconv"
@@ -10,6 +11,18 @@ import (
 	"github.com/charmbracelet/lipgloss/table"
 	"github.com/zawa-kyo/shelvia/internal/application"
 )
+
+// WriteCSV writes a complete table as CSV.
+func WriteCSV(out io.Writer, result application.Table) error {
+	writer := csv.NewWriter(out)
+	if err := writer.Write(result.Headers); err != nil {
+		return err
+	}
+	if err := writer.WriteAll(result.Rows); err != nil {
+		return err
+	}
+	return writer.Error()
+}
 
 var (
 	accentColor = lipgloss.AdaptiveColor{Light: "25", Dark: "81"}

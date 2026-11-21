@@ -14,8 +14,14 @@ func Run(args []string, service application.Service, out io.Writer, errOut io.Wr
 		var output application.Output
 		output, err = service.Run(command)
 		if err == nil {
-			presentation.Write(out, output)
-			return 0
+			if command.Format == "csv" {
+				err = presentation.WriteCSV(out, output.Table)
+			} else {
+				presentation.Write(out, output)
+			}
+			if err == nil {
+				return 0
+			}
 		}
 	}
 	presentation.WriteError(errOut, err)

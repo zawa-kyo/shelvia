@@ -35,6 +35,7 @@ my-shelf/
 - `shelvia search SQL_FRAGMENT`
 - `shelvia show TITLE`
 - `shelvia path TITLE`
+- `shelvia export`
 
 `init` は、指定されたディレクトリを `shelf root` として初期化し、`config.toml` と `example.toml` を作成します。`PATH` を省略した場合は、カレントディレクトリを対象にします。対象ディレクトリが存在しない場合は新しく作成します。`example.toml` は書籍ファイルとして扱われるため、生成直後から validation に通る内容にします。生成内容は最小構成にとどめ、追加で編集してほしい箇所は TOML コメントで案内します。既存の `config.toml` や `example.toml` は上書きせずエラーにします。
 
@@ -47,6 +48,10 @@ my-shelf/
 `search` は、SQL 風の条件を受け取ります。内部的には独自 DSL ではなく、検証済みデータから作った一時検索ビューに対する制限付き fragment として扱います。
 
 `search` の既定順と表示列は `list` と同じです。検索条件の末尾には `order by <column> [asc|desc]` を 1 つ指定できます。方向を省略した場合は `asc` として扱います。
+
+`list` と `search` は `--format csv` で同じ列と順序の CSV を標準出力に出力します。`--format table` または省略時は画面向けの表を表示します。CSV では値を省略せず、ヘッダーを出力し、該当する書籍がない場合もヘッダーを出力します。
+
+`export` は検証済みの全書籍を CSV で標準出力に出力します。列は `title`、`author`、`rating`、`read_date`、`genre`、`publisher`、`edition`、`imprint`、`series`、`translator`、`thoughts.summary`、`thoughts.body` の順です。未指定の任意項目は空欄です。CSV は書籍データの出力であり、設定ファイルや TOML のコメントは含みません。
 
 `show TITLE` は、ファイル名ではなくファイル内の `title` で書籍を 1 件特定し、詳細を表示します。該当なし、または同じ `title` が複数ある場合はエラーにします。複数ある場合は、該当するファイルパスを候補として表示します。
 
@@ -107,7 +112,7 @@ my-shelf/
 
 ## Data Flow
 
-`validate`、`list`、`search`、`show`、`path` は同じ読み込み経路を使います。
+`validate`、`list`、`search`、`show`、`path`、`export` は同じ読み込み経路を使います。
 
 1. `shelf root` を解決する
 2. `config.toml` を設定ファイルとして読み込む

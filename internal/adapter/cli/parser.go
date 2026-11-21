@@ -53,15 +53,28 @@ func Parse(args []string) (application.Command, error) {
 		}
 		return requireRoot(application.Command{Kind: application.Validate, ShelfRoot: resolveRoot(*shelf)})
 	case "list":
-		if len(rest) != 1 {
+		format, args, err := parseFormat(rest[1:])
+		if err != nil {
+			return application.Command{}, err
+		}
+		if len(args) != 0 {
 			return application.Command{}, fmt.Errorf("usage: shelvia list")
 		}
-		return requireRoot(application.Command{Kind: application.List, ShelfRoot: resolveRoot(*shelf)})
+		return requireRoot(application.Command{Kind: application.List, ShelfRoot: resolveRoot(*shelf), Format: format})
 	case "search":
-		if len(rest) != 2 {
+		format, args, err := parseFormat(rest[1:])
+		if err != nil {
+			return application.Command{}, err
+		}
+		if len(args) != 1 {
 			return application.Command{}, fmt.Errorf("usage: shelvia search SQL_FRAGMENT")
 		}
-		return requireRoot(application.Command{Kind: application.Search, ShelfRoot: resolveRoot(*shelf), Where: rest[1]})
+		return requireRoot(application.Command{Kind: application.Search, ShelfRoot: resolveRoot(*shelf), Where: args[0], Format: format})
+	case "export":
+		if len(rest) != 1 {
+			return application.Command{}, fmt.Errorf("usage: shelvia export")
+		}
+		return requireRoot(application.Command{Kind: application.Export, ShelfRoot: resolveRoot(*shelf), Format: "csv"})
 	case "show":
 		if len(rest) != 2 {
 			return application.Command{}, fmt.Errorf("usage: shelvia show TITLE")
@@ -75,6 +88,26 @@ func Parse(args []string) (application.Command, error) {
 	default:
 		return application.Command{}, fmt.Errorf("unknown command: %s", rest[0])
 	}
+}
+
+func parseFormat(args []string) (string, []string, error) {
+	var format string
+	var positional []string
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--format" {
+			if format != "" || i+1 >= len(args) {
+				return "", nil, fmt.Errorf("--format requires a single value")
+			}
+			i++
+			format = args[i]
+			if format != "csv" && format != "table" {
+				return "", nil, fmt.Errorf("unknown output format: %s", format)
+			}
+		} else {
+			positional = append(positional, args[i])
+		}
+	}
+	return format, positional, nil
 }
 
 func parseAdd(args []string) (application.Command, error) {

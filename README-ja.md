@@ -137,6 +137,16 @@ shelvia search 'rating >= 90 order by rating desc'
 
 `search` は、`title`、`author`、`rating`、`read_date`、`genre`、`publisher`、`edition`、`imprint`、`series`、`translator` を対象にした絞り込み条件を受け取ります。`order by <column> [asc|desc]` を末尾に付けると、同じカラムで並び替えできます。`order by` を指定しない場合の並び順と表示列は `list` と同じです。
 
+一覧や検索結果を CSV で出力できます。全書籍の全項目を出力するには `export` を使います。
+
+```bash
+shelvia list --format csv > books.csv
+shelvia search 'rating >= 90' --format csv > selected.csv
+shelvia export > all-books.csv
+```
+
+CSV にはヘッダーが付き、未指定の任意項目は空欄になります。`export` には感想を含む書籍データが入ります。設定ファイルと TOML のコメントは含まれません。
+
 1 冊の詳細を表示するには、ファイル名ではなくファイル内の `title` を指定します。
 
 ```bash
