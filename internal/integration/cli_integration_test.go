@@ -137,6 +137,26 @@ publisher = "Example Publisher"
 	t.Fatal("export did not include Collaboration")
 }
 
+func TestShowDisplaysCompleteDetails(t *testing.T) {
+	root := t.TempDir()
+	service := application.NewService(localfs.Repository{}, queryengine.Store{})
+	require.NoError(t, localfs.Repository{}.Init(root))
+	data := `title = "Long Details"
+author = ["A very long author name", "Another very long author name"]
+genre = ["Novel"]
+translator = ["A very long translator name", "Another long translator name"]
+rating = 90
+read_date = 2024-01-02
+publisher = "Example Publisher"
+`
+	require.NoError(t, os.WriteFile(filepath.Join(root, "book.toml"), []byte(data), 0o644))
+	t.Setenv("SHELVIA_DIR", root)
+	code, stdout, stderr := runCLI(service, "show", "Long Details")
+	require.Equal(t, 0, code, stderr)
+	require.Contains(t, stdout, "Another very long author name")
+	require.Contains(t, stdout, "Another long translator name")
+}
+
 func validBookTOML(title string) string {
 	return `title = "` + title + `"
 author = "Some Author"

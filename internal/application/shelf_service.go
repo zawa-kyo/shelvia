@@ -62,7 +62,7 @@ func (service Service) Run(command Command) (Output, error) {
 		if err != nil {
 			return Output{}, err
 		}
-		return Output{Table: bookDetailsTable(book)}, nil
+		return Output{Table: bookDetailsTable(book), Detail: true}, nil
 	case Export:
 		books, err := service.loadBooks(command.ShelfRoot)
 		if err != nil {
@@ -143,18 +143,18 @@ func toBookDraft(data BookData) domain.BookDraft {
 		Genres:      data.Genres,
 		Translators: data.Translators,
 		Title:       data.Title,
-		Author:      data.Author,
-		Rating:      data.Rating,
-		ReadDate:    data.ReadDate,
-		Genre:       data.Genre,
-		Publisher:   data.Publisher,
-		Edition:     data.Edition,
-		Imprint:     data.Imprint,
-		Series:      data.Series,
-		Translator:  data.Translator,
-		Summary:     data.Summary,
-		Body:        data.Body,
-		FilePath:    data.Path,
+
+		Rating:   data.Rating,
+		ReadDate: data.ReadDate,
+
+		Publisher: data.Publisher,
+		Edition:   data.Edition,
+		Imprint:   data.Imprint,
+		Series:    data.Series,
+
+		Summary:  data.Summary,
+		Body:     data.Body,
+		FilePath: data.Path,
 	}
 }
 

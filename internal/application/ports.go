@@ -33,18 +33,18 @@ type BookData struct {
 	Translators []string
 	Path        string
 	Title       string
-	Author      string
-	Rating      *int
-	ReadDate    time.Time
-	Genre       string
-	Publisher   string
-	Edition     string
-	Imprint     string
 
-	Series     string
-	Translator string
-	Summary    string
-	Body       string
+	Rating   *int
+	ReadDate time.Time
+
+	Publisher string
+	Edition   string
+	Imprint   string
+
+	Series string
+
+	Summary string
+	Body    string
 }
 
 // Reads and writes shelf files without exposing filesystem details.

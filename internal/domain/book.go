@@ -11,15 +11,12 @@ type Book struct {
 	genres      []string
 	translators []string
 	title       Title
-	author      Author
 	rating      Rating
 	readDate    ReadDate
-	genre       Genre
 	publisher   Publisher
 	edition     Edition
 	imprint     Imprint
 	series      OptionalText
-	translator  OptionalText
 	summary     OptionalText
 	body        OptionalText
 	filePath    FilePath
@@ -27,69 +24,40 @@ type Book struct {
 
 // Creates a book and validates all domain invariants.
 func NewBook(draft BookDraft, allowed AllowedValues) (Book, error) {
-	draft.Authors = append([]string{}, draft.Authors...)
-	if len(draft.Authors) == 0 && draft.Author != "" {
-		draft.Authors = []string{draft.Author}
+	if len(draft.Authors) == 0 {
+		return Book{}, validationError("author", "required")
 	}
-	draft.Genres = append([]string{}, draft.Genres...)
-	if len(draft.Genres) == 0 && draft.Genre != "" {
-		draft.Genres = []string{draft.Genre}
+	authors := make([]string, 0, len(draft.Authors))
+	for _, value := range draft.Authors {
+		author, err := NewAuthor(value)
+		if err != nil {
+			return Book{}, err
+		}
+		authors = append(authors, author.String())
 	}
-	if draft.Translators != nil {
-		draft.Translators = append([]string{}, draft.Translators...)
+	if len(draft.Genres) == 0 {
+		return Book{}, validationError("genre", "required")
 	}
-	if draft.Authors != nil {
-		if len(draft.Authors) == 0 {
-			return Book{}, validationError("author", "required")
+	genres := make([]string, 0, len(draft.Genres))
+	for _, value := range draft.Genres {
+		genre, err := NewGenre(value)
+		if err != nil {
+			return Book{}, err
 		}
-		for i, value := range draft.Authors {
-			author, err := NewAuthor(value)
-			if err != nil {
-				return Book{}, err
-			}
-			draft.Authors[i] = author.String()
+		if !allowed.ContainsGenre(genre) {
+			return Book{}, validationError("genre", fmt.Sprintf("unknown genre: %s", genre.String()))
 		}
-		draft.Author = draft.Authors[0]
-	} else {
-		draft.Authors = []string{draft.Author}
+		genres = append(genres, genre.String())
 	}
-	if draft.Genres != nil {
-		if len(draft.Genres) == 0 {
-			return Book{}, validationError("genre", "required")
+	translators := make([]string, 0, len(draft.Translators))
+	for _, value := range draft.Translators {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			return Book{}, validationError("translator", "must not be empty")
 		}
-		for i, value := range draft.Genres {
-			genre, err := NewGenre(value)
-			if err != nil {
-				return Book{}, err
-			}
-			if !allowed.ContainsGenre(genre) {
-				return Book{}, validationError("genre", fmt.Sprintf("unknown genre: %s", genre.String()))
-			}
-			draft.Genres[i] = genre.String()
-		}
-		draft.Genre = draft.Genres[0]
-	} else {
-		draft.Genres = []string{draft.Genre}
-	}
-	if draft.Translators != nil {
-		for i, value := range draft.Translators {
-			value = strings.TrimSpace(value)
-			if value == "" {
-				return Book{}, validationError("translator", "must not be empty")
-			}
-			draft.Translators[i] = value
-		}
-		if len(draft.Translators) > 0 {
-			draft.Translator = draft.Translators[0]
-		}
-	} else if strings.TrimSpace(draft.Translator) != "" {
-		draft.Translators = []string{strings.TrimSpace(draft.Translator)}
+		translators = append(translators, value)
 	}
 	title, err := NewTitle(draft.Title)
-	if err != nil {
-		return Book{}, err
-	}
-	author, err := NewAuthor(draft.Author)
 	if err != nil {
 		return Book{}, err
 	}
@@ -103,13 +71,6 @@ func NewBook(draft BookDraft, allowed AllowedValues) (Book, error) {
 	readDate, err := NewReadDate(draft.ReadDate)
 	if err != nil {
 		return Book{}, err
-	}
-	genre, err := NewGenre(draft.Genre)
-	if err != nil {
-		return Book{}, err
-	}
-	if !allowed.ContainsGenre(genre) {
-		return Book{}, validationError("genre", fmt.Sprintf("unknown genre: %s", genre.String()))
 	}
 	publisher, err := NewPublisher(draft.Publisher)
 	if err != nil {
@@ -145,19 +106,16 @@ func NewBook(draft BookDraft, allowed AllowedValues) (Book, error) {
 	}
 
 	return Book{
-		authors:     append([]string(nil), draft.Authors...),
-		genres:      append([]string(nil), draft.Genres...),
-		translators: append([]string(nil), draft.Translators...),
+		authors:     authors,
+		genres:      genres,
+		translators: translators,
 		title:       title,
-		author:      author,
 		rating:      rating,
 		readDate:    readDate,
-		genre:       genre,
 		publisher:   publisher,
 		edition:     edition,
 		imprint:     imprint,
 		series:      NewOptionalText(draft.Series),
-		translator:  NewOptionalText(draft.Translator),
 		summary:     NewOptionalText(draft.Summary),
 		body:        NewOptionalText(draft.Body),
 		filePath:    NewFilePath(draft.FilePath),
@@ -173,11 +131,6 @@ func (book Book) Title() Title {
 	return book.title
 }
 
-// Returns the book author.
-func (book Book) Author() Author {
-	return book.author
-}
-
 // Returns the book rating.
 func (book Book) Rating() Rating {
 	return book.rating
@@ -186,11 +139,6 @@ func (book Book) Rating() Rating {
 // Returns the date when the book was read.
 func (book Book) ReadDate() ReadDate {
 	return book.readDate
-}
-
-// Returns the book genre.
-func (book Book) Genre() Genre {
-	return book.genre
 }
 
 // Returns the book publisher.
@@ -211,11 +159,6 @@ func (book Book) Imprint() Imprint {
 // Returns the optional series text.
 func (book Book) Series() OptionalText {
 	return book.series
-}
-
-// Returns the optional translator text.
-func (book Book) Translator() OptionalText {
-	return book.translator
 }
 
 // Returns the optional short thoughts text.

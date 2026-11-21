@@ -8,16 +8,16 @@ type BookDraft struct {
 	Genres      []string
 	Translators []string
 	Title       string
-	Author      string
-	Rating      *int
-	ReadDate    time.Time
-	Genre       string
-	Publisher   string
-	Edition     string
-	Imprint     string
-	Series      string
-	Translator  string
-	Summary     string
-	Body        string
-	FilePath    string
+
+	Rating   *int
+	ReadDate time.Time
+
+	Publisher string
+	Edition   string
+	Imprint   string
+	Series    string
+
+	Summary  string
+	Body     string
+	FilePath string
 }

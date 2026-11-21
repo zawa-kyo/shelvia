@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -84,8 +85,10 @@ func compareByColumn(left, right domain.Book, column string) int {
 		return left.Rating().Int() - right.Rating().Int()
 	case "read_date":
 		return left.ReadDate().Time().Compare(right.ReadDate().Time())
+	case "author", "genre", "translator":
+		return slices.Compare(leftRow.arrays[column], rightRow.arrays[column])
 	default:
-		return strings.Compare(leftRow[column], rightRow[column])
+		return strings.Compare(leftRow.scalars[column], rightRow.scalars[column])
 	}
 }
 
@@ -112,28 +115,22 @@ func jsonArray(values []string) string {
 	return string(data)
 }
 
-func rowFromBook(book domain.Book) map[string]string {
-	row := map[string]string{
-		"title":      book.Title().String(),
-		"author":     book.Author().String(),
-		"rating":     strconv.Itoa(book.Rating().Int()),
-		"read_date":  book.ReadDate().String(),
-		"genre":      book.Genre().String(),
-		"publisher":  book.Publisher().String(),
-		"edition":    optionalControlled(book.Edition().IsSpecified(), book.Edition().String()),
-		"imprint":    optionalControlled(book.Imprint().IsSpecified(), book.Imprint().String()),
-		"series":     optionalText(book.Series()),
-		"translator": optionalText(book.Translator()),
+type queryRow struct {
+	scalars map[string]string
+	arrays  map[string][]string
+}
+
+func rowFromBook(book domain.Book) queryRow {
+	return queryRow{
+		scalars: map[string]string{
+			"title": book.Title().String(), "rating": strconv.Itoa(book.Rating().Int()),
+			"read_date": book.ReadDate().String(), "publisher": book.Publisher().String(),
+			"edition": optionalControlled(book.Edition().IsSpecified(), book.Edition().String()),
+			"imprint": optionalControlled(book.Imprint().IsSpecified(), book.Imprint().String()),
+			"series":  optionalText(book.Series()),
+		},
+		arrays: map[string][]string{"author": book.Authors(), "genre": book.Genres(), "translator": book.Translators()},
 	}
-	for key, values := range map[string][]string{"author": book.Authors(), "genre": book.Genres(), "translator": book.Translators()} {
-		if len(values) == 0 {
-			row[key] = ""
-		} else {
-			encoded, _ := json.Marshal(values)
-			row[key] = string(encoded)
-		}
-	}
-	return row
 }
 
 func optionalControlled(specified bool, value string) string {
@@ -151,7 +148,7 @@ func optionalText(text domain.OptionalText) string {
 }
 
 type expr interface {
-	eval(row map[string]string) (truthValue, error)
+	eval(row queryRow) (truthValue, error)
 }
 
 type truthValue uint8
@@ -168,8 +165,12 @@ type comparison struct {
 	value  string
 }
 
-func (node comparison) eval(row map[string]string) (truthValue, error) {
-	left := row[node.column]
+func (node comparison) eval(row queryRow) (truthValue, error) {
+	left := row.scalars[node.column]
+	values, isArray := row.arrays[node.column]
+	if isArray && len(values) > 0 {
+		left = "present"
+	}
 	if node.op == "is null" {
 		return truthFromBool(left == ""), nil
 	}
@@ -179,11 +180,7 @@ func (node comparison) eval(row map[string]string) (truthValue, error) {
 	if left == "" {
 		return truthUnknown, nil
 	}
-	if node.column == "author" || node.column == "genre" || node.column == "translator" {
-		var values []string
-		if err := json.Unmarshal([]byte(left), &values); err != nil {
-			return truthFalse, err
-		}
+	if isArray {
 		matched := false
 		for _, value := range values {
 			if node.op == "like" {
@@ -221,7 +218,7 @@ type logical struct {
 	left, right expr
 }
 
-func (node logical) eval(row map[string]string) (truthValue, error) {
+func (node logical) eval(row queryRow) (truthValue, error) {
 	left, err := node.left.eval(row)
 	if err != nil {
 		return truthFalse, err
@@ -258,7 +255,7 @@ type negation struct {
 	inner expr
 }
 
-func (node negation) eval(row map[string]string) (truthValue, error) {
+func (node negation) eval(row queryRow) (truthValue, error) {
 	value, err := node.inner.eval(row)
 	if err != nil || value == truthUnknown {
 		return value, err
