@@ -62,6 +62,12 @@ func (service Service) Run(command Command) (Output, error) {
 			return Output{}, err
 		}
 		return Output{Table: bookDetailsTable(book)}, nil
+	case Export:
+		books, err := service.loadBooks(command.ShelfRoot)
+		if err != nil {
+			return Output{}, err
+		}
+		return Output{Table: exportTable(books)}, nil
 	case Path:
 		books, err := service.loadBooks(command.ShelfRoot)
 		if err != nil {
@@ -75,6 +81,14 @@ func (service Service) Run(command Command) (Output, error) {
 	default:
 		return Output{}, fmt.Errorf("unknown command")
 	}
+}
+
+func exportTable(books []domain.Book) Table {
+	table := Table{Headers: []string{"title", "author", "rating", "read_date", "genre", "publisher", "edition", "imprint", "series", "translator", "thoughts.summary", "thoughts.body"}}
+	for _, book := range books {
+		table.Rows = append(table.Rows, []string{book.Title().String(), book.Author().String(), fmt.Sprint(book.Rating().Int()), book.ReadDate().String(), book.Genre().String(), book.Publisher().String(), book.Edition().String(), book.Imprint().String(), book.Series().String(), book.Translator().String(), book.Summary().String(), book.Body().String()})
+	}
+	return table
 }
 
 func (service Service) loadBooks(root string) ([]domain.Book, error) {

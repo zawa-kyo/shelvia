@@ -2,6 +2,7 @@ package integration_test
 
 import (
 	"bytes"
+	"encoding/csv"
 	"os"
 	"path/filepath"
 	"strings"
@@ -75,6 +76,28 @@ func TestCLIRunWithRealAdapters(t *testing.T) {
 		require.Contains(t, stderr, "Broken.toml")
 		require.NotContains(t, stderr, root)
 	})
+}
+
+func TestCSVOutput(t *testing.T) {
+	root := t.TempDir()
+	service := application.NewService(localfs.Repository{}, queryengine.Store{})
+	require.NoError(t, localfs.Repository{}.Init(root))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "long.toml"), []byte(validBookTOML("A very long book title, with comma")+"\n[thoughts]\nbody = \"\"\"First line\nSecond line\"\"\"\n"), 0o644))
+	t.Setenv("SHELVIA_DIR", root)
+	for _, args := range [][]string{{"list", "--format", "csv"}, {"search", `title like "A very%"`, "--format", "csv"}, {"export"}} {
+		code, stdout, stderr := runCLI(service, args...)
+		require.Equal(t, 0, code, stderr)
+		rows, err := csv.NewReader(strings.NewReader(stdout)).ReadAll()
+		require.NoError(t, err)
+		require.GreaterOrEqual(t, len(rows), 2)
+		require.Contains(t, stdout, "A very long book title, with comma")
+		if args[0] == "export" {
+			require.Equal(t, "thoughts.body", rows[0][11])
+			require.Contains(t, stdout, "First line\nSecond line")
+		} else {
+			require.Len(t, rows[0], 6)
+		}
+	}
 }
 
 func validBookTOML(title string) string {

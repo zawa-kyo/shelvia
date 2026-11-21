@@ -13,6 +13,7 @@ const (
 	Search
 	Show
 	Path
+	Export
 )
 
 // Command contains the validated command-line intent.
@@ -22,6 +23,7 @@ type Command struct {
 	Title     string
 	ReadDate  time.Time
 	Where     string
+	Format    string
 }
 
 // Table is a presentation-neutral tabular result.
