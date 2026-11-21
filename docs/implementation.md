@@ -149,6 +149,7 @@ Domain レイヤーは、書籍と設定ファイル由来の許可値に関す�
 `Title`、`Author`、`Rating`、`ReadDate`、`Genre`、`Publisher`、`Edition`、`Imprint`、`OptionalText`、`FilePath` などは value object として扱います。Domain の型は基本的に value object が多いため、`*_value.go` のような suffix は付けません。`value_objects/` のような技術分類 package も初回実装では作りません。package を切る必要が出た場合は、`internal/domain/book` のように一緒に使うドメイン概念単位で分けます。
 
 - 必須項目が存在する
+- `author` と `genre` は 1 件以上、`translator` は 0 件以上の文字列であり、各要素は空でない
 - `rating` は `0` から `100` の整数である
 - `read_date` は TOML の日付である
 - `genre`、`publisher`、`edition`、`imprint` は設定ファイルの許可値と照合できる

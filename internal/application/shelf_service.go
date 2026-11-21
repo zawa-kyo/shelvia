@@ -1,6 +1,7 @@
 package application
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -86,9 +87,17 @@ func (service Service) Run(command Command) (Output, error) {
 func exportTable(books []domain.Book) Table {
 	table := Table{Headers: []string{"title", "author", "rating", "read_date", "genre", "publisher", "edition", "imprint", "series", "translator", "thoughts.summary", "thoughts.body"}}
 	for _, book := range books {
-		table.Rows = append(table.Rows, []string{book.Title().String(), book.Author().String(), fmt.Sprint(book.Rating().Int()), book.ReadDate().String(), book.Genre().String(), book.Publisher().String(), book.Edition().String(), book.Imprint().String(), book.Series().String(), book.Translator().String(), book.Summary().String(), book.Body().String()})
+		table.Rows = append(table.Rows, []string{book.Title().String(), arrayJSON(book.Authors()), fmt.Sprint(book.Rating().Int()), book.ReadDate().String(), arrayJSON(book.Genres()), book.Publisher().String(), book.Edition().String(), book.Imprint().String(), book.Series().String(), arrayJSON(book.Translators()), book.Summary().String(), book.Body().String()})
 	}
 	return table
+}
+
+func arrayJSON(values []string) string {
+	if values == nil {
+		values = []string{}
+	}
+	data, _ := json.Marshal(values)
+	return string(data)
 }
 
 func (service Service) loadBooks(root string) ([]domain.Book, error) {
@@ -130,19 +139,22 @@ func toAllowedValuesInput(data AllowedValuesData) domain.AllowedValuesInput {
 
 func toBookDraft(data BookData) domain.BookDraft {
 	return domain.BookDraft{
-		Title:      data.Title,
-		Author:     data.Author,
-		Rating:     data.Rating,
-		ReadDate:   data.ReadDate,
-		Genre:      data.Genre,
-		Publisher:  data.Publisher,
-		Edition:    data.Edition,
-		Imprint:    data.Imprint,
-		Series:     data.Series,
-		Translator: data.Translator,
-		Summary:    data.Summary,
-		Body:       data.Body,
-		FilePath:   data.Path,
+		Authors:     data.Authors,
+		Genres:      data.Genres,
+		Translators: data.Translators,
+		Title:       data.Title,
+		Author:      data.Author,
+		Rating:      data.Rating,
+		ReadDate:    data.ReadDate,
+		Genre:       data.Genre,
+		Publisher:   data.Publisher,
+		Edition:     data.Edition,
+		Imprint:     data.Imprint,
+		Series:      data.Series,
+		Translator:  data.Translator,
+		Summary:     data.Summary,
+		Body:        data.Body,
+		FilePath:    data.Path,
 	}
 }
 
@@ -177,10 +189,10 @@ func bookDetailsTable(book domain.Book) Table {
 	rows := [][]string{
 		{"path", book.FilePath().String()},
 		{"title", book.Title().String()},
-		{"author", book.Author().String()},
+		{"author", arrayJSON(book.Authors())},
 		{"rating", fmt.Sprintf("%d", book.Rating().Int())},
 		{"read_date", book.ReadDate().String()},
-		{"genre", book.Genre().String()},
+		{"genre", arrayJSON(book.Genres())},
 		{"publisher", book.Publisher().String()},
 	}
 	if value := book.Edition().String(); value != "" {
@@ -192,8 +204,8 @@ func bookDetailsTable(book domain.Book) Table {
 	if value := book.Series().String(); value != "" {
 		rows = append(rows, []string{"series", value})
 	}
-	if value := book.Translator().String(); value != "" {
-		rows = append(rows, []string{"translator", value})
+	if values := book.Translators(); len(values) != 0 {
+		rows = append(rows, []string{"translator", arrayJSON(values)})
 	}
 	if value := book.Summary().String(); value != "" {
 		rows = append(rows, []string{"summary", value})

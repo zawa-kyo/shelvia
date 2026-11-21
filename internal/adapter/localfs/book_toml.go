@@ -1,6 +1,8 @@
 package localfs
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pelletier/go-toml/v2"
@@ -12,21 +14,57 @@ func readBook(root, path string) (application.BookData, error) {
 	if err := decodeTOML(root, path, &raw); err != nil {
 		return application.BookData{}, err
 	}
+	authors, err := stringArray(raw.Author)
+	if err != nil {
+		return application.BookData{}, fmt.Errorf("%s: author: %w", relativePath(root, path), err)
+	}
+	genres, err := stringArray(raw.Genre)
+	if err != nil {
+		return application.BookData{}, fmt.Errorf("%s: genre: %w", relativePath(root, path), err)
+	}
+	translators, err := stringArray(raw.Translator)
+	if err != nil {
+		return application.BookData{}, fmt.Errorf("%s: translator: %w", relativePath(root, path), err)
+	}
 	return application.BookData{
-		Path:       relativePath(root, path),
-		Title:      raw.Title,
-		Author:     raw.Author,
-		Rating:     raw.Rating,
-		ReadDate:   localDateTime(raw.ReadDate),
-		Genre:      raw.Genre,
-		Publisher:  raw.Publisher,
-		Edition:    raw.Edition,
-		Imprint:    raw.Imprint,
-		Series:     raw.Series,
-		Translator: raw.Translator,
-		Summary:    raw.Thoughts.Summary,
-		Body:       raw.Thoughts.Body,
+		Authors:     authors,
+		Genres:      genres,
+		Translators: translators,
+		Path:        relativePath(root, path),
+		Title:       raw.Title,
+		Rating:      raw.Rating,
+		ReadDate:    localDateTime(raw.ReadDate),
+		Publisher:   raw.Publisher,
+		Edition:     raw.Edition,
+		Imprint:     raw.Imprint,
+		Series:      raw.Series,
+		Summary:     raw.Thoughts.Summary,
+		Body:        raw.Thoughts.Body,
 	}, nil
+}
+
+func stringArray(value any) ([]string, error) {
+	switch v := value.(type) {
+	case nil:
+		return nil, nil
+	case string:
+		if strings.TrimSpace(v) == "" {
+			return []string{}, nil
+		}
+		return []string{v}, nil
+	case []any:
+		values := make([]string, 0, len(v))
+		for _, item := range v {
+			s, ok := item.(string)
+			if !ok {
+				return nil, fmt.Errorf("expected an array of strings")
+			}
+			values = append(values, s)
+		}
+		return values, nil
+	default:
+		return nil, fmt.Errorf("expected a string or an array of strings")
+	}
 }
 
 func localDateTime(date toml.LocalDate) time.Time {
@@ -38,15 +76,15 @@ func localDateTime(date toml.LocalDate) time.Time {
 
 type bookTOML struct {
 	Title      string         `toml:"title"`
-	Author     string         `toml:"author"`
+	Author     any            `toml:"author"`
 	Rating     *int           `toml:"rating"`
 	ReadDate   toml.LocalDate `toml:"read_date"`
-	Genre      string         `toml:"genre"`
+	Genre      any            `toml:"genre"`
 	Publisher  string         `toml:"publisher"`
 	Edition    string         `toml:"edition"`
 	Imprint    string         `toml:"imprint"`
 	Series     string         `toml:"series"`
-	Translator string         `toml:"translator"`
+	Translator any            `toml:"translator"`
 	Thoughts   thoughtsTOML   `toml:"thoughts"`
 }
 

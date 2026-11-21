@@ -13,9 +13,9 @@ func TestStoreList(t *testing.T) {
 	t.Run("read_date descとtitle ascで表示列を返す", func(t *testing.T) {
 		books := testBooks(t)
 		wantRows := [][]string{
-			{"2024-01-02", "90", "Alpha", "Author A", "Novel", "Example Publisher"},
-			{"2024-01-02", "70", "Beta", "Author B", "Technical", "Example Publisher"},
-			{"2024-01-01", "80", "Gamma", "Author C", "Novel", "Example Publisher"},
+			{"2024-01-02", "90", "Alpha", `["Author A"]`, `["Novel"]`, "Example Publisher"},
+			{"2024-01-02", "70", "Beta", `["Author B"]`, `["Technical"]`, "Example Publisher"},
+			{"2024-01-01", "80", "Gamma", `["Author C"]`, `["Novel"]`, "Example Publisher"},
 		}
 
 		table, err := Store{}.List(books)

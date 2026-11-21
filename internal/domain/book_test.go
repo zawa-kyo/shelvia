@@ -76,6 +76,25 @@ func TestBookRecord(t *testing.T) {
 	})
 }
 
+func TestMultipleValues(t *testing.T) {
+	draft := validBookDraft()
+	draft.Authors = []string{" Alice ", "Bob"}
+	draft.Genres = []string{"Novel", "Technical"}
+	draft.Translators = []string{"Taro", "Jiro"}
+	book, err := NewBook(draft, testAllowedValues(t))
+	require.NoError(t, err)
+	require.Equal(t, []string{"Alice", "Bob"}, book.Authors())
+	require.Equal(t, []string{"Novel", "Technical"}, book.Genres())
+	require.Equal(t, []string{"Taro", "Jiro"}, book.Translators())
+	draft.Genres = []string{"Novel", "Unknown"}
+	_, err = NewBook(draft, testAllowedValues(t))
+	require.ErrorContains(t, err, "unknown genre")
+	draft.Genres = []string{"Novel"}
+	draft.Translators = []string{"Taro", " "}
+	_, err = NewBook(draft, testAllowedValues(t))
+	require.ErrorContains(t, err, "translator")
+}
+
 func TestEditionAndImprint(t *testing.T) {
 	t.Run("レーベルが不要な判型はレーベルなしで記録できる", func(t *testing.T) {
 		draft := validBookDraft()

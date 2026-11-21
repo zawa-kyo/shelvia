@@ -64,11 +64,11 @@ shelvia add "Some Book" --date 2024-01-01
 
 ```toml
 title = "Some Book"
-author = "Some Author"
+author = ["Some Author"]
 rating = 90
 read_date = 2024-01-01
 
-genre = "Novel"
+genre = ["Novel"]
 edition = "Paperback"
 imprint = "Example Paperback"
 publisher = "Example Publisher"
@@ -159,7 +159,7 @@ shelvia search 'rating >= 90' --format csv > selected.csv
 shelvia export > all-books.csv
 ```
 
-CSV output includes a header; unspecified optional fields are empty. `export` includes book data and thoughts, but not the config file or TOML comments.
+CSV output includes a header; unspecified optional fields are empty, except that an unspecified `translator` is `[]`. `export` includes book data and thoughts, but not the config file or TOML comments.
 
 ## Data Format
 
@@ -184,6 +184,8 @@ Optional fields are:
 - `thoughts.body`
 
 `rating` is an integer from `0` to `100`. `read_date` is written as a TOML date. `genre`, `publisher`, `edition`, and `imprint` are checked against `config.toml`.
+
+`author` and `genre` are arrays of one or more strings. `translator` is an optional array of strings. Array elements cannot be blank. Shelvia also accepts the previous single-string format. Searches compare individual array elements. CSV represents each array as a JSON array in one cell.
 
 Optional fields can be omitted. Empty strings in optional fields are treated the same as omitted fields.
 

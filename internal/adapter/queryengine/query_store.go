@@ -1,6 +1,7 @@
 package queryengine
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"sort"
@@ -95,12 +96,20 @@ func tableFromBooks(books []domain.Book) application.Table {
 			book.ReadDate().String(),
 			strconv.Itoa(book.Rating().Int()),
 			book.Title().String(),
-			book.Author().String(),
-			book.Genre().String(),
+			jsonArray(book.Authors()),
+			jsonArray(book.Genres()),
 			book.Publisher().String(),
 		}
 	}
 	return application.Table{Headers: headers, Rows: rows}
+}
+
+func jsonArray(values []string) string {
+	if values == nil {
+		values = []string{}
+	}
+	data, _ := json.Marshal(values)
+	return string(data)
 }
 
 func rowFromBook(book domain.Book) map[string]string {
@@ -115,6 +124,14 @@ func rowFromBook(book domain.Book) map[string]string {
 		"imprint":    optionalControlled(book.Imprint().IsSpecified(), book.Imprint().String()),
 		"series":     optionalText(book.Series()),
 		"translator": optionalText(book.Translator()),
+	}
+	for key, values := range map[string][]string{"author": book.Authors(), "genre": book.Genres(), "translator": book.Translators()} {
+		if len(values) == 0 {
+			row[key] = ""
+		} else {
+			encoded, _ := json.Marshal(values)
+			row[key] = string(encoded)
+		}
 	}
 	return row
 }
@@ -161,6 +178,26 @@ func (node comparison) eval(row map[string]string) (truthValue, error) {
 	}
 	if left == "" {
 		return truthUnknown, nil
+	}
+	if node.column == "author" || node.column == "genre" || node.column == "translator" {
+		var values []string
+		if err := json.Unmarshal([]byte(left), &values); err != nil {
+			return truthFalse, err
+		}
+		matched := false
+		for _, value := range values {
+			if node.op == "like" {
+				matched = matched || like(value, node.value)
+			} else if node.op == "!=" {
+				matched = matched || value == node.value
+			} else {
+				matched = matched || compareString(value, node.value, node.op)
+			}
+		}
+		if node.op == "!=" {
+			matched = !matched
+		}
+		return truthFromBool(matched), nil
 	}
 	if node.column == "rating" {
 		leftNumber, err := strconv.Atoi(left)
