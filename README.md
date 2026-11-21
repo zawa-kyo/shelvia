@@ -163,6 +163,8 @@ CSV output includes a header; unspecified optional fields are empty. `export` in
 
 ## Data Format
 
+The initial release stores one completion date per book record. It does not track separate rereading histories.
+
 Book files are written in TOML. Required fields are:
 
 - `title`
