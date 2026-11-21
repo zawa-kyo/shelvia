@@ -1,34 +1,34 @@
 # Shelvia
 
-Shelvia is a CLI tool for managing your reading log on your own machine. It stores each completed book as a TOML file and lets you validate, list, and search your records from the command line. Unread books and books in progress are outside its scope.
+Shelvia is a CLI tool for managing your reading log locally. It stores each finished book as an individual TOML file, allowing you to validate, list, and search your collection directly from the terminal (unread books and books in progress are out of scope).
 
-Your reading data is not locked inside an application database. It stays as plain text that you can read, edit, track with Git, and search with tools like `grep` and `find`. Shelvia adds structured validation and querying on top, so fields like rating, read date, genre, publisher, and imprint remain useful later.
+Your reading data is never trapped inside an application database. Instead, it remains plain text that you can open in any text editor, track with Git, and inspect with standard command-line tools like `grep` and `find`. On top of that, Shelvia enables rich, structured querying across ratings, completion dates, genres, publishers, and imprints.
 
 ## Why Shelvia?
 
-You can keep a reading log in a spreadsheet or a hosted book-tracking service. Both are useful, but over time you may want the data to stay in your own hands, avoid depending on a specific service or UI, and search it in your own way.
+You can track your reading in a spreadsheet or a hosted book-tracking service. Both are convenient, but over time you may want to keep complete ownership of your data, avoid dependence on a proprietary service or UI, and query your history freely.
 
-Free-form notes, such as Markdown, solve the ownership problem but make structured questions harder to answer:
+On the other hand, plain unstructured notes (such as raw Markdown files) are easy for humans to read, but answering structured questions becomes tedious:
 
 - Which books did I rate 90 or higher?
 - Which technical books did I read in 2024?
-- Which books did I read from a specific publisher or imprint?
+- Which books came from a specific publisher or imprint?
 
-Shelvia is built to keep the convenience of plain text while adding database-like search when you need it.
+Shelvia bridges this gap, combining the simplicity and durability of plain text with the structured query power of a database.
 
 ## Features
 
-- Store one book as one TOML file.
-- Keep reading data in your own repository.
-- Create `config.toml` and `example.toml` with `init`.
-- Create a book file template with `add`.
-- Validate required fields, ratings, dates, genres, publishers, and other controlled values.
-- Search with SQL-like conditions.
-- Treat TOML as the source of truth and use SQLite only as a temporary search view.
+- One TOML file per book
+- Store and version your reading data directly in your own Git repository
+- Initialize a shelf with `config.toml` and `example.toml` via `shelvia init`
+- Scaffold new book files from templates with `shelvia add`
+- Validate required fields, rating ranges, dates, and controlled vocabularies (genres, publishers, editions, imprints)
+- Flexible filtering using SQL-like expressions
+- Plain TOML as the single source of truth; SQLite used purely as an ephemeral in-memory query view
 
 ## Installation
 
-Installation will be added before the first release.
+Installation instructions will be provided prior to the initial release.
 
 ## Quick Start
 
@@ -38,9 +38,8 @@ Create a directory for your reading data. Shelvia calls this directory the `shel
 shelvia init ./my-shelf
 ```
 
-`init` initializes the specified directory as a `shelf root` and writes `config.toml` and `example.toml` inside it. If the directory does not exist, Shelvia creates it.
-`example.toml` is an example book file that is included in validation.
-Both files start as a minimal working setup, and comments point out what to edit.
+`init` initializes the directory as a `shelf root` and generates `config.toml` and `example.toml` (creating the directory if it does not already exist).
+`example.toml` is a valid sample book included in validation. Both files provide a minimal working baseline with comments explaining how to customize them.
 
 ```text
 my-shelf/
@@ -48,19 +47,19 @@ my-shelf/
   example.toml
 ```
 
-Set the `shelf root` in an environment variable.
+Set the `shelf root` environment variable:
 
 ```bash
 export SHELVIA_DIR=./my-shelf
 ```
 
-Create a book file template.
+Generate a template for a new book:
 
 ```bash
 shelvia add "Some Book" --date 2024-01-01
 ```
 
-`add` creates `Some Book.toml` and also writes the given title to the file's `title` field. Open the generated file and fill in the book details.
+`add` generates `Some Book.toml` with the specified title prefilled. Open the file to enter your book details:
 
 ```toml
 title = "Some Book"
@@ -80,7 +79,7 @@ Longer thoughts can live here.
 """
 ```
 
-Add allowed values to `config.toml`. `config.toml` defines allowed values for genres, publishers, editions, imprints, and similar fields.
+Add your allowed values to `config.toml`. This configuration file prevents naming inconsistencies across genres, publishers, editions, and imprints.
 
 ```toml
 # List the values you want to use in this shelf.
@@ -113,21 +112,21 @@ name = "Hardcover"
 imprint_required = false
 ```
 
-Validate the data.
+Validate your shelf data:
 
 ```bash
 shelvia validate
 ```
 
-List your books.
+List your books:
 
 ```bash
 shelvia list
 ```
 
-`list` sorts by `read_date` descending and then `title` ascending. It prints `read_date`, `rating`, `title`, `author`, `genre`, and `publisher`.
+`list` sorts books by `read_date` descending (newest first), resolving ties by `title` ascending. The displayed columns are `read_date`, `rating`, `title`, `author`, `genre`, and `publisher`.
 
-Search with conditions.
+Filter books with search conditions:
 
 ```bash
 shelvia search 'rating >= 90'
@@ -135,23 +134,23 @@ shelvia search 'genre = "Novel" and publisher = "Example Publisher"'
 shelvia search 'rating >= 90 order by rating desc'
 ```
 
-`search` accepts filter conditions for `title`, `author`, `rating`, `read_date`, `genre`, `publisher`, `edition`, `imprint`, `series`, and `translator`. Add `order by <column> [asc|desc]` at the end to sort by one of the same columns. Without `order by`, sorting and displayed columns are the same as `list`.
+`search` accepts filter conditions targeting `title`, `author`, `rating`, `read_date`, `genre`, `publisher`, `edition`, `imprint`, `series`, and `translator`. Append `order by <column> [asc|desc]` to change the sort order (defaults to the same sort order and columns as `list`).
 
-Show one book by passing its `title` value, not its file name.
+Inspect a single book by providing its `title` (not its filename):
 
 ```bash
 shelvia show "Some Book"
 ```
 
-Print the generated TOML file path by passing the same `title`.
+Find the path of a book's TOML file by its `title`:
 
 ```bash
 shelvia path "Some Book"
 ```
 
-If multiple books have the same `title`, `show` and `path` fail and print the matching file paths as candidates.
+If multiple books share the same `title`, both `show` and `path` exit with an error and list all matching file paths.
 
-Use CSV to export a list or search result. To export all fields for all books, use `export`.
+Export your list or search results to CSV format. To export all fields for all books, use `export`:
 
 ```bash
 shelvia list --format csv > books.csv
@@ -159,41 +158,39 @@ shelvia search 'rating >= 90' --format csv > selected.csv
 shelvia export > all-books.csv
 ```
 
-CSV output includes a header; unspecified optional fields are empty, except that an unspecified `translator` is `[]`. `export` includes book data and thoughts, but not the config file or TOML comments.
+CSV exports include headers. Omitted optional fields are rendered as blank cells (an empty `translator` array renders as `[]`). The `export` command outputs all book data, including reader thoughts (`thoughts`), while excluding config files and TOML comments.
 
 ## Data Format
 
-The initial release stores one completion date per book record. It does not track separate rereading histories.
+The initial release tracks a single completion date per book record (re-read histories are not supported).
 
-Book files are written in TOML. Required fields are:
+Book records are written in TOML. The required fields are:
 
-- `title`
-- `author`
-- `rating`
-- `read_date`
-- `genre`
-- `publisher`
+- `title`: Book title
+- `author`: Author(s) (array of one or more non-empty strings)
+- `rating`: Integer from `0` to `100`
+- `read_date`: Completion date (TOML date format)
+- `genre`: Genre(s) (array of one or more non-empty strings, validated against `config.toml`)
+- `publisher`: Publisher (validated against `config.toml`)
 
 Optional fields are:
 
-- `edition`
-- `imprint`
-- `series`
-- `translator`
-- `thoughts.summary`
-- `thoughts.body`
+- `edition`: Format or edition (validated against `config.toml`)
+- `imprint`: Imprint (validated against `config.toml`)
+- `series`: Series name
+- `translator`: Translator(s) (array of non-empty strings)
+- `thoughts.summary`: Summary of your impressions
+- `thoughts.body`: Extended thoughts or notes
 
-`rating` is an integer from `0` to `100`. `read_date` is written as a TOML date. `genre`, `publisher`, `edition`, and `imprint` are checked against `config.toml`.
+`author` and `genre` require arrays containing at least one string. `translator` is an optional array of strings. Array elements cannot be blank (single-string formats are supported for backward compatibility). Search filters match against individual array elements. In CSV output, arrays are serialized as JSON arrays within a single cell.
 
-`author` and `genre` are arrays of one or more strings. `translator` is an optional array of strings. Array elements cannot be blank. Shelvia also accepts the previous single-string format. Searches compare individual array elements. CSV represents each array as a JSON array in one cell.
-
-Optional fields can be omitted. Empty strings in optional fields are treated the same as omitted fields.
+Optional fields can be omitted entirely; specifying an empty string is treated the same as omitting the field.
 
 ## `config.toml`
 
-`config.toml` prevents inconsistent names for genres, publishers, editions, and imprints. Shelvia reads config values from `config.toml` directly under the `shelf root`.
+`config.toml` acts as a controlled vocabulary to ensure consistency across genres, publishers, editions, and imprints. Shelvia loads these definitions from the `config.toml` located directly at the `shelf root`.
 
-The `config.toml` generated by `init` is the smallest config that keeps `example.toml` valid. Add only the values you want to use from there. Arrays for unused config types may stay empty.
+The `config.toml` generated by `init` is a minimal valid configuration that satisfies `example.toml`. You can expand it with your own allowed values. Lists for unused fields can remain empty (`[]`).
 
 ```toml
 # List the values you want to use in this shelf.
@@ -226,11 +223,11 @@ name = "Hardcover"
 imprint_required = false
 ```
 
-When an edition has `imprint_required = true`, omitting the imprint is an error. If an imprint is present, an edition must also be present.
+When an edition specifies `imprint_required = true`, books using that edition must also specify an `imprint`. Furthermore, specifying an `imprint` requires an `edition` to be present.
 
 ## `shelf root`
 
-Shelvia receives one `shelf root` and recursively reads `.toml` files under it. The only exception is `config.toml` directly under the `shelf root`, which is treated as the config file instead of a book file. A `config.toml` anywhere else is reported as a misplaced config file.
+Shelvia discovers books by recursively reading `.toml` files under a specified `shelf root`. `config.toml` located directly at the `shelf root` is treated exclusively as the configuration file. Any `config.toml` located in a subdirectory is considered misplaced and triggers an error.
 
 ```text
 my-shelf/
@@ -239,14 +236,12 @@ my-shelf/
   Some Book.toml
 ```
 
-Shelvia recursively finds `.toml` files under the `shelf root`. `config.toml` is the exception and is used for config values.
+Shelvia resolves the `shelf root` using the following precedence:
 
-Shelvia determines the `shelf root` in this order:
-
-1. A command argument for the `shelf root`, such as `init PATH`, or the directory passed to `--shelf`
+1. Explicit command arguments (such as `init PATH`) or the `--shelf` option
 2. The `SHELVIA_DIR` environment variable
 
-When a directory is passed explicitly, it takes precedence over `SHELVIA_DIR`. If neither is set, Shelvia exits with an error.
+Explicit command-line arguments always take precedence over `SHELVIA_DIR`. If neither is provided, Shelvia exits with an error.
 
 ```bash
 export SHELVIA_DIR=~/reading-log
@@ -256,22 +251,22 @@ shelvia --shelf ~/other-reading-log validate
 
 ## Validation
 
-`validate` only checks that the whole `shelf root` can be loaded. It reads book files and `config.toml`, then validates required fields, types, ratings, dates, config references, and the relationship between editions and imprints. It does not create, update, or convert files.
+`shelvia validate` checks that the entire `shelf root` can be loaded cleanly. It reads all book files and `config.toml`, verifying TOML syntax, required fields, data types, rating boundaries, date formats, configuration references, and edition/imprint rules. It does not create, modify, or convert any files.
 
 ```bash
 shelvia validate
 ```
 
-On success, Shelvia prints the number of loaded files.
+If validation succeeds, Shelvia reports the total count of verified files:
 
 ```text
 Validated 1 book, 1 config file.
 ```
 
-On failure, Shelvia prints the file path, location, and reason.
+If validation fails, Shelvia outputs the file path, location, and reason for the error:
 
 ```text
 Some Book.toml:5: unknown genre "Novel"
 ```
 
-If `validate` succeeds, the same shelf can be loaded by `list` and `search`. It is intended as a pre-commit check after adding or editing reading data.
+A shelf that passes `validate` is guaranteed to load properly in `list` and `search`. Use `validate` as a pre-commit check after creating or editing book records.

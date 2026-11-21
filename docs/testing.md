@@ -1,16 +1,30 @@
 # Testing
 
-## 方針
+本書は Shelvia のテスト戦略、テストコードの構造、および各テストレイヤーの設計方針を定義します。
 
-一般的なテスト戦略を取ります。Domain は単体テストで細かく確認し、それ以外は外部依存を port の裏で差し替えた結合テストで確認します。
+## 全体方針
 
-## Test Structure
+Shelvia では以下の 3 つのテストレイヤーを組み合わせて品質を担保します。
 
-各テストケースは AAA パターンで構成します。Arrange で入力、fixture、fake、期待値を準備し、Act で対象の処理を実行し、Assert で結果を検証します。
+1. **Domain 単体テスト**: 外部 I/O を一切排し、ドメインのビジネスルールと不変条件を網羅的に検証します。
+2. **Integration テスト**: アプリケーション層を中心に、各アダプターの境界やユースケースの連携を検証します (クエリエンジン等の重い依存は Fake/Mock に差し替えます)。
+3. **E2E テスト**: ビルドされた CLI バイナリを実行し、環境変数、終了コード、標準出力を通じた主要シナリオのスモークテストを実施します。
 
-AAA の区切りはコメントではなく空行で表します。`// Arrange`、`// Act`、`// Assert` のようなコメントは書きません。テスト名と変数名だけで意図が読めるようにします。
+## テスト構造の規約
 
-Assertion は `github.com/stretchr/testify/require` に揃えます。期待と違う時点でテストを止めたいケースが多いため、基本は `assert` ではなく `require` を使います。手書きの `if` と `t.Fatal` は、テスト用 fake の振る舞いを表す場合を除き避けます。
+### AAA パターンの徹底
+
+すべてのテストケースは **Arrange(準備)**、**Act(実行)**、**Assert(検証)** の 3 フェーズで記述します。
+
+- 各フェーズの区切りは空行で表し、`// Arrange` などのコメントは記載しません。
+- 原則として 1 つのテストケースにおける Act は 1 回とします (複数ステップのユーザーフローを検証するシナリオテストを除く)。
+
+### アサーションライブラリ
+
+アサーションには `github.com/stretchr/testify/require` を統一して使用します。
+
+- 期待値と不一致が生じた時点でテストを直ちに失敗させるため、`assert` ではなく `require` を基本とします。
+- 手書きの `if ... t.Fatalf` は、テストヘルパーや Fake の実装内を除き使用しません。
 
 ```go
 func TestExample(t *testing.T) {
@@ -26,22 +40,22 @@ func TestExample(t *testing.T) {
 }
 ```
 
-Act は原則として 1 つにします。CLI の一連のユーザーフローを確認する結合テストのように、複数の操作がシナリオそのものを表す場合は、操作ごとに小さな AAA を繰り返します。
+## ドメイン単体テスト (Domain Unit Tests)
 
-## Domain Unit Tests
+ドメイン層のテストでは、ファイルシステムやデータベースに一切触れず、メモリ上のみで純粋なビジネスロジックを検証します。
 
-Domain の単体テストでは、外部 I/O を使わずに純粋なルールを確認します。
+### 主な検証対象
 
-- 必須項目
-- `rating`
-- `read_date`
-- 設定ファイル由来の許可値との照合
-- 任意項目の空文字が未指定として扱われること
-- edition と imprint の関係
+- 必須項目の存在チェック
+- `rating` の許容範囲 (0〜100)
+- `read_date` の日付形式
+- `AllowedValues` との照合 (ジャンル、出版社、判型、レーベル)
+- 任意項目における空文字の未指定扱い
+- 判型 (`edition`) とレーベル (`imprint`) の相関ルール
 
-Go のテストは package 単位で実行されるため、プロダクションコードとテストコードを必ず 1 ファイルずつ対応させる必要はありません。ただし、ドメイン層では tactical DDD の役割が読み取れるように、概念単位で対応が分かる粒度にします。
+### ファイル構成
 
-初回実装では次の対応を基本にします。
+初期実装では概念単位で以下の対応を基本とします。
 
 ```text
 book.go / book_draft.go      -> book_test.go
@@ -49,33 +63,33 @@ allowed_values.go            -> allowed_values_test.go
 author.go, rating.go, etc.   -> value_objects_test.go
 ```
 
-`value_objects_test.go` が肥大化し、対象の value object を探しにくくなった場合は、`title_test.go`、`rating_test.go` のように value object ごとの test file へ分割します。最初から薄い test file を大量に作るより、読みやすさが落ちた時点で分割します。
+`value_objects_test.go` が肥大化して保守性が低下した段階で、`title_test.go` や `rating_test.go` などの個別ファイルへの分割を検討します。
 
-## Integration Tests
+## 結合テスト (Integration Tests)
 
-Application、CLI、presentation、local filesystem 境界は結合テストで確認します。インフラ層の依存先、特に query engine の DB は mock または fake adapter に差し替えます。
+アプリケーション層を中心に、CLI 入力、ローカルファイルシステム、出力整形のアダプター境界を結合して検証します。外部 I/O が関わるインフラ (クエリエンジンなど) は Port の背後で Fake アダプター等に差し替えて実行を高速化します。
 
-- `shelf root` の解決と、未指定時のエラー
-- `init` の shelf 作成方針
-- `add` の作成パスと TOML テンプレート
-- `add` のファイル名検証と既存ファイル衝突
-- `config.toml` が書籍ファイルとして扱われないこと
-- 直下以外の `config.toml` が明示エラーになること
-- TOML parsing から application command までの流れ
-- ファイルパスを含む検証エラー
-- `validate`、`list`、`search`、`show`、`path` の command output
-- `list` と `search` の既定順が `read_date desc, title asc` であること
-- `list` と `search` の表示列が揃っていること
-- 対応する検索 fragment が query port に渡ること
-- `show` と `path` がファイル名ではなく `title` で 1 件を特定すること
-- 未対応または危険な SQL fragment が adapter 境界で拒否されること
+### 主な検証対象
 
-DB そのものの挙動は query engine adapter の薄い adapter test に限定します。主な振る舞いは、DB に依存しない application-level integration test で検証します。
+- `shelf root` の解決優先順位と、未指定時のエラーハンドリング
+- `init` による初期ファイル生成と既存ファイルの上書き防止
+- `add` によるテンプレート作成と安全なファイル名バリデーション
+- `config.toml` の特殊扱い (書籍ファイルとして扱われないこと、不正配置時のエラー)
+- TOML パースからドメインバリデーションまでのエラーハンドリング (ファイルパスと行番号を含む診断出力)
+- `validate`, `list`, `search`, `show`, `path`, `export` の各コマンド出力
+- `list` と `search` の既定ソート順 (`read_date desc, title asc`) および出力列の一致
+- 許可された検索フラグメントのクエリポートへの受け渡し
+- 不正・危険な SQL フラグメントのアダプター境界での拒否
+- `show` および `path` における `title` による書籍特定と重複タイトルのエラーハンドリング
 
-Fixture shelf は `fixtures/shelves/` 配下に置きます。`valid/` は正常系、`invalid/` は失敗系に分け、各 fixture directory をそのまま `shelf root` として読み込ませます。
+### Fixture の利用
 
-## E2E Tests
+実際の shelf 構造を検証する際は、`fixtures/shelves/` 配下のディレクトリ (`valid/`、`invalid/`) をそのまま `shelf root` として読み込ませます。
 
-E2E test は `e2e/` に置き、`make e2e` から build tag `e2e` 付きで実行します。これは Go の integration test を置き換えるものではなく、実際の CLI binary、環境変数、終了コード、標準出力を含む主要導線の smoke test として扱います。
+## E2E テスト (E2E Tests)
 
-E2E test では、一時ディレクトリに shelf を作成して `init`、`add`、`validate`、`list`、`search` を確認します。並び替えのように複数データが必要な確認では、`fixtures/shelves/valid/minimal` を使い、出力内のタイトル順を機械的に検証します。
+E2E テストは `e2e/` ディレクトリに配置し、ビルドタグ `e2e` を付与して `make e2e` から実行します。
+
+- 実際の CLI バイナリをコンパイルし、サブプロセスとして呼び出します。
+- 一時ディレクトリ上で `init`、`add`、`validate`、`list`、`search` の一連のコマンドを実行し、終了コードおよび標準出力を検証します。
+- 並び替え等の複数件データを必要とするテストには `fixtures/shelves/valid/minimal` を活用します。
