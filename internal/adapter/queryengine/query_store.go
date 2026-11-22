@@ -36,43 +36,75 @@ func queryBooks(books []domain.Book, query queryFragment) ([]domain.Book, error)
 		return nil, err
 	}
 	defer db.Close()
+
 	// An in-memory SQLite database belongs to a single connection.
 	db.SetMaxOpenConns(1)
 	if _, err := db.Exec(`PRAGMA case_sensitive_like = ON`); err != nil {
 		return nil, err
 	}
-	if _, err := db.Exec(`CREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT, rating INTEGER, read_date TEXT, publisher TEXT, edition TEXT, imprint TEXT, series TEXT, author TEXT, genre TEXT, translator TEXT)`); err != nil {
+	if _, err := db.Exec(`CREATE TABLE books (
+		id INTEGER PRIMARY KEY,
+		title TEXT,
+		rating INTEGER,
+		read_date TEXT,
+		publisher TEXT,
+		edition TEXT,
+		imprint TEXT,
+		series TEXT,
+		author TEXT,
+		genre TEXT,
+		translator TEXT
+	)`); err != nil {
 		return nil, err
 	}
+
 	tx, err := db.Begin()
 	if err != nil {
 		return nil, err
 	}
 	defer tx.Rollback()
+
 	stmt, err := tx.Prepare(`INSERT INTO books VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return nil, err
 	}
 	defer stmt.Close()
+
 	for i, book := range books {
 		row := rowFromBook(book)
-		if _, err := stmt.Exec(i, book.Title().String(), book.Rating().Int(), book.ReadDate().String(), book.Publisher().String(), nullIfEmpty(row.scalars["edition"]), nullIfEmpty(row.scalars["imprint"]), nullIfEmpty(row.scalars["series"]), jsonArray(book.Authors()), jsonArray(book.Genres()), jsonArray(book.Translators())); err != nil {
+		if _, err := stmt.Exec(
+			i,
+			book.Title().String(),
+			book.Rating().Int(),
+			book.ReadDate().String(),
+			book.Publisher().String(),
+			nullIfEmpty(row.scalars["edition"]),
+			nullIfEmpty(row.scalars["imprint"]),
+			nullIfEmpty(row.scalars["series"]),
+			jsonArray(book.Authors()),
+			jsonArray(book.Genres()),
+			jsonArray(book.Translators()),
+		); err != nil {
 			return nil, err
 		}
 	}
+
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
+
 	condition := "1"
 	var args []any
 	if query.where != nil {
 		condition, args = query.where.sql()
 	}
+
 	rows, err := db.Query("SELECT id FROM books WHERE "+condition, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
+
 	filtered := make([]domain.Book, 0, len(books))
 	for rows.Next() {
 		var id int
@@ -84,6 +116,7 @@ func queryBooks(books []domain.Book, query queryFragment) ([]domain.Book, error)
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
+
 	return sortQueriedBooks(filtered, query.order), nil
 }
 
@@ -153,13 +186,19 @@ type queryRow struct {
 func rowFromBook(book domain.Book) queryRow {
 	return queryRow{
 		scalars: map[string]string{
-			"title": book.Title().String(), "rating": strconv.Itoa(book.Rating().Int()),
-			"read_date": book.ReadDate().String(), "publisher": book.Publisher().String(),
-			"edition": optionalControlled(book.Edition().IsSpecified(), book.Edition().String()),
-			"imprint": optionalControlled(book.Imprint().IsSpecified(), book.Imprint().String()),
-			"series":  optionalText(book.Series()),
+			"title":     book.Title().String(),
+			"rating":    strconv.Itoa(book.Rating().Int()),
+			"read_date": book.ReadDate().String(),
+			"publisher": book.Publisher().String(),
+			"edition":   optionalControlled(book.Edition().IsSpecified(), book.Edition().String()),
+			"imprint":   optionalControlled(book.Imprint().IsSpecified(), book.Imprint().String()),
+			"series":    optionalText(book.Series()),
 		},
-		arrays: map[string][]string{"author": book.Authors(), "genre": book.Genres(), "translator": book.Translators()},
+		arrays: map[string][]string{
+			"author":     book.Authors(),
+			"genre":      book.Genres(),
+			"translator": book.Translators(),
+		},
 	}
 }
 

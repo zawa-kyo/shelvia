@@ -11,9 +11,11 @@ func readConfig(root, path string) (application.AllowedValuesData, error) {
 	if err := decodeTOML(root, path, &raw); err != nil {
 		return application.AllowedValuesData{}, err
 	}
+
 	if raw.Kind != "shelvia-config" {
 		return application.AllowedValuesData{}, fmt.Errorf("config.toml: kind must be \"shelvia-config\"")
 	}
+
 	editions := make([]application.EditionData, len(raw.Values.Editions))
 	for i, edition := range raw.Values.Editions {
 		editions[i] = application.EditionData{
@@ -21,6 +23,7 @@ func readConfig(root, path string) (application.AllowedValuesData, error) {
 			ImprintRequired: edition.ImprintRequired,
 		}
 	}
+
 	return application.AllowedValuesData{
 		Genres:     raw.Values.Genres,
 		Publishers: raw.Values.Publishers,

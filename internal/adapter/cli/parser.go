@@ -60,7 +60,11 @@ func Parse(args []string) (application.Command, error) {
 		if len(args) != 0 {
 			return application.Command{}, fmt.Errorf("usage: shelvia list")
 		}
-		return requireRoot(application.Command{Kind: application.List, ShelfRoot: resolveRoot(*shelf), Format: format})
+		return requireRoot(application.Command{
+			Kind:      application.List,
+			ShelfRoot: resolveRoot(*shelf),
+			Format:    format,
+		})
 	case "search":
 		format, args, err := parseFormat(rest[1:])
 		if err != nil {
@@ -69,22 +73,39 @@ func Parse(args []string) (application.Command, error) {
 		if len(args) != 1 {
 			return application.Command{}, fmt.Errorf("usage: shelvia search SQL_FRAGMENT")
 		}
-		return requireRoot(application.Command{Kind: application.Search, ShelfRoot: resolveRoot(*shelf), Where: args[0], Format: format})
+		return requireRoot(application.Command{
+			Kind:      application.Search,
+			ShelfRoot: resolveRoot(*shelf),
+			Where:     args[0],
+			Format:    format,
+		})
 	case "export":
 		if len(rest) != 1 {
 			return application.Command{}, fmt.Errorf("usage: shelvia export")
 		}
-		return requireRoot(application.Command{Kind: application.Export, ShelfRoot: resolveRoot(*shelf), Format: "csv"})
+		return requireRoot(application.Command{
+			Kind:      application.Export,
+			ShelfRoot: resolveRoot(*shelf),
+			Format:    "csv",
+		})
 	case "show":
 		if len(rest) != 2 {
 			return application.Command{}, fmt.Errorf("usage: shelvia show TITLE")
 		}
-		return requireRoot(application.Command{Kind: application.Show, ShelfRoot: resolveRoot(*shelf), Title: rest[1]})
+		return requireRoot(application.Command{
+			Kind:      application.Show,
+			ShelfRoot: resolveRoot(*shelf),
+			Title:     rest[1],
+		})
 	case "path":
 		if len(rest) != 2 {
 			return application.Command{}, fmt.Errorf("usage: shelvia path TITLE")
 		}
-		return requireRoot(application.Command{Kind: application.Path, ShelfRoot: resolveRoot(*shelf), Title: rest[1]})
+		return requireRoot(application.Command{
+			Kind:      application.Path,
+			ShelfRoot: resolveRoot(*shelf),
+			Title:     rest[1],
+		})
 	default:
 		return application.Command{}, fmt.Errorf("unknown command: %s", rest[0])
 	}
@@ -131,12 +152,14 @@ func parseAdd(args []string) (application.Command, error) {
 			title = args[i]
 		}
 	}
+
 	if title == "" {
 		return application.Command{}, fmt.Errorf("usage: shelvia add TITLE --date YYYY-MM-DD")
 	}
 	if readDate == "" {
 		return application.Command{}, fmt.Errorf("add requires --date")
 	}
+
 	date, err := time.Parse("2006-01-02", readDate)
 	if err != nil {
 		return application.Command{}, fmt.Errorf("invalid --date: %s", readDate)

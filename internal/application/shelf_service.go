@@ -38,20 +38,23 @@ func (service Service) Run(command Command) (Output, error) {
 		if err != nil {
 			return Output{}, err
 		}
-		books, err = service.query.List(books)
-		return Output{Kind: List, Books: books}, err
+
+		result, err := service.query.List(books)
+		return Output{Kind: List, Books: result}, err
 	case Search:
 		books, err := service.loadBooks(command.ShelfRoot)
 		if err != nil {
 			return Output{}, err
 		}
-		books, err = service.query.Query(books, command.Where)
-		return Output{Kind: Search, Books: books}, err
+
+		result, err := service.query.Query(books, command.Where)
+		return Output{Kind: Search, Books: result}, err
 	case Show:
 		books, err := service.loadBooks(command.ShelfRoot)
 		if err != nil {
 			return Output{}, err
 		}
+
 		book, err := findBookByTitle(books, command.Title)
 		if err != nil {
 			return Output{}, err
@@ -68,6 +71,7 @@ func (service Service) Run(command Command) (Output, error) {
 		if err != nil {
 			return Output{}, err
 		}
+
 		book, err := findBookByTitle(books, command.Title)
 		if err != nil {
 			return Output{}, err

@@ -77,22 +77,40 @@ func TestBookRecord(t *testing.T) {
 }
 
 func TestMultipleValues(t *testing.T) {
-	draft := validBookDraft()
-	draft.Authors = []string{" Alice ", "Bob"}
-	draft.Genres = []string{"Novel", "Technical"}
-	draft.Translators = []string{"Taro", "Jiro"}
-	book, err := NewBook(draft, testAllowedValues(t))
-	require.NoError(t, err)
-	require.Equal(t, []string{"Alice", "Bob"}, book.Authors())
-	require.Equal(t, []string{"Novel", "Technical"}, book.Genres())
-	require.Equal(t, []string{"Taro", "Jiro"}, book.Translators())
-	draft.Genres = []string{"Novel", "Unknown"}
-	_, err = NewBook(draft, testAllowedValues(t))
-	require.ErrorContains(t, err, "unknown genre")
-	draft.Genres = []string{"Novel"}
-	draft.Translators = []string{"Taro", " "}
-	_, err = NewBook(draft, testAllowedValues(t))
-	require.ErrorContains(t, err, "translator")
+	t.Run("複数の著者とジャンルと訳者を記録できる", func(t *testing.T) {
+		draft := validBookDraft()
+		draft.Authors = []string{" Alice ", "Bob"}
+		draft.Genres = []string{"Novel", "Technical"}
+		draft.Translators = []string{"Taro", "Jiro"}
+		allowed := testAllowedValues(t)
+
+		book, err := NewBook(draft, allowed)
+
+		require.NoError(t, err)
+		require.Equal(t, []string{"Alice", "Bob"}, book.Authors())
+		require.Equal(t, []string{"Novel", "Technical"}, book.Genres())
+		require.Equal(t, []string{"Taro", "Jiro"}, book.Translators())
+	})
+
+	t.Run("複数のジャンルに未登録の値があると記録できない", func(t *testing.T) {
+		draft := validBookDraft()
+		draft.Genres = []string{"Novel", "Unknown"}
+		allowed := testAllowedValues(t)
+
+		_, err := NewBook(draft, allowed)
+
+		require.ErrorContains(t, err, "unknown genre")
+	})
+
+	t.Run("複数の訳者に空の値があると記録できない", func(t *testing.T) {
+		draft := validBookDraft()
+		draft.Translators = []string{"Taro", " "}
+		allowed := testAllowedValues(t)
+
+		_, err := NewBook(draft, allowed)
+
+		require.ErrorContains(t, err, "translator")
+	})
 }
 
 func TestEditionAndImprint(t *testing.T) {
@@ -120,6 +138,17 @@ func TestEditionAndImprint(t *testing.T) {
 		require.Equal(t, "Hardcover", book.Edition().String())
 		require.Equal(t, "Example Paperback", book.Imprint().String())
 	})
+}
+
+func TestEditionValidationPrecedesImprintValidation(t *testing.T) {
+	draft := validBookDraft()
+	draft.Edition = "Unknown Edition"
+	draft.Imprint = "Unknown Imprint"
+	allowed := testAllowedValues(t)
+
+	_, err := NewBook(draft, allowed)
+
+	require.Equal(t, ValidationError{Field: "edition", Reason: "unknown edition: Unknown Edition"}, err)
 }
 
 func TestOptionalFields(t *testing.T) {

@@ -35,6 +35,7 @@ func NewBook(draft BookDraft, allowed AllowedValues) (Book, error) {
 		}
 		authors = append(authors, author.String())
 	}
+
 	if len(draft.Genres) == 0 {
 		return Book{}, validationError("genre", "required")
 	}
@@ -49,6 +50,7 @@ func NewBook(draft BookDraft, allowed AllowedValues) (Book, error) {
 		}
 		genres = append(genres, genre.String())
 	}
+
 	translators := make([]string, 0, len(draft.Translators))
 	for _, value := range draft.Translators {
 		value = strings.TrimSpace(value)
@@ -57,10 +59,12 @@ func NewBook(draft BookDraft, allowed AllowedValues) (Book, error) {
 		}
 		translators = append(translators, value)
 	}
+
 	title, err := NewTitle(draft.Title)
 	if err != nil {
 		return Book{}, err
 	}
+
 	if draft.Rating == nil {
 		return Book{}, validationError("rating", "required")
 	}
@@ -68,10 +72,12 @@ func NewBook(draft BookDraft, allowed AllowedValues) (Book, error) {
 	if err != nil {
 		return Book{}, err
 	}
+
 	readDate, err := NewReadDate(draft.ReadDate)
 	if err != nil {
 		return Book{}, err
 	}
+
 	publisher, err := NewPublisher(draft.Publisher)
 	if err != nil {
 		return Book{}, err
@@ -79,30 +85,10 @@ func NewBook(draft BookDraft, allowed AllowedValues) (Book, error) {
 	if !allowed.ContainsPublisher(publisher) {
 		return Book{}, validationError("publisher", fmt.Sprintf("unknown publisher: %s", publisher.String()))
 	}
-	edition, err := NewEdition(draft.Edition)
+
+	edition, imprint, err := validateEditionAndImprint(draft, allowed)
 	if err != nil {
 		return Book{}, err
-	}
-	var editionRule EditionRule
-	if edition.IsSpecified() {
-		var ok bool
-		editionRule, ok = allowed.FindEdition(edition)
-		if !ok {
-			return Book{}, validationError("edition", fmt.Sprintf("unknown edition: %s", edition.String()))
-		}
-	}
-	imprint, err := NewImprint(draft.Imprint)
-	if err != nil {
-		return Book{}, err
-	}
-	if imprint.IsSpecified() && !edition.IsSpecified() {
-		return Book{}, validationError("imprint", fmt.Sprintf("imprint requires edition: %s", imprint.String()))
-	}
-	if edition.IsSpecified() && editionRule.ImprintRequired() && !imprint.IsSpecified() {
-		return Book{}, validationError("imprint", fmt.Sprintf("imprint is required for edition: %s", edition.String()))
-	}
-	if imprint.IsSpecified() && !allowed.ContainsImprint(imprint) {
-		return Book{}, validationError("imprint", fmt.Sprintf("unknown imprint: %s", imprint.String()))
 	}
 
 	return Book{
@@ -122,9 +108,51 @@ func NewBook(draft BookDraft, allowed AllowedValues) (Book, error) {
 	}, nil
 }
 
-func (book Book) Authors() []string     { return append([]string(nil), book.authors...) }
-func (book Book) Genres() []string      { return append([]string(nil), book.genres...) }
-func (book Book) Translators() []string { return append([]string(nil), book.translators...) }
+func validateEditionAndImprint(draft BookDraft, allowed AllowedValues) (Edition, Imprint, error) {
+	edition, err := NewEdition(draft.Edition)
+	if err != nil {
+		return Edition{}, Imprint{}, err
+	}
+	var editionRule EditionRule
+	if edition.IsSpecified() {
+		var ok bool
+		editionRule, ok = allowed.FindEdition(edition)
+		if !ok {
+			return Edition{}, Imprint{}, validationError("edition", fmt.Sprintf("unknown edition: %s", edition.String()))
+		}
+	}
+
+	imprint, err := NewImprint(draft.Imprint)
+	if err != nil {
+		return Edition{}, Imprint{}, err
+	}
+	if imprint.IsSpecified() && !edition.IsSpecified() {
+		return Edition{}, Imprint{}, validationError("imprint", fmt.Sprintf("imprint requires edition: %s", imprint.String()))
+	}
+	if edition.IsSpecified() && editionRule.ImprintRequired() && !imprint.IsSpecified() {
+		return Edition{}, Imprint{}, validationError("imprint", fmt.Sprintf("imprint is required for edition: %s", edition.String()))
+	}
+	if imprint.IsSpecified() && !allowed.ContainsImprint(imprint) {
+		return Edition{}, Imprint{}, validationError("imprint", fmt.Sprintf("unknown imprint: %s", imprint.String()))
+	}
+
+	return edition, imprint, nil
+}
+
+// Authors returns a copy of the author names.
+func (book Book) Authors() []string {
+	return append([]string(nil), book.authors...)
+}
+
+// Genres returns a copy of the genre names.
+func (book Book) Genres() []string {
+	return append([]string(nil), book.genres...)
+}
+
+// Translators returns a copy of the translator names.
+func (book Book) Translators() []string {
+	return append([]string(nil), book.translators...)
+}
 
 // Returns the book title.
 func (book Book) Title() Title {

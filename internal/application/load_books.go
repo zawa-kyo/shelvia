@@ -11,6 +11,7 @@ func (service Service) loadBooks(root string) ([]domain.Book, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	allowed, err := domain.NewAllowedValues(toAllowedValuesInput(data.Config))
 	if err != nil {
 		return nil, fmt.Errorf("config.toml: %w", err)
@@ -35,6 +36,7 @@ func toAllowedValuesInput(data AllowedValuesData) domain.AllowedValuesInput {
 			ImprintRequired: edition.ImprintRequired,
 		}
 	}
+
 	return domain.AllowedValuesInput{
 		Genres:     data.Genres,
 		Publishers: data.Publishers,

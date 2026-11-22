@@ -57,6 +57,7 @@ func Write(out io.Writer, output application.Output) error {
 		_, err := fmt.Fprintln(out, titleStyle.Render(output.Message))
 		return err
 	}
+
 	result := outputTable(output)
 	if len(result.Headers) == 0 {
 		return nil

@@ -82,9 +82,20 @@ func TestCSVOutput(t *testing.T) {
 	root := t.TempDir()
 	service := application.NewService(localfs.Repository{}, queryengine.Store{})
 	require.NoError(t, localfs.Repository{}.Init(root))
-	require.NoError(t, os.WriteFile(filepath.Join(root, "long.toml"), []byte(validBookTOML("A very long book title, with comma")+"\n[thoughts]\nbody = \"\"\"First line\nSecond line\"\"\"\n"), 0o644))
+	book := validBookTOML("A very long book title, with comma") + `
+[thoughts]
+body = """First line
+Second line"""
+`
+	require.NoError(t, os.WriteFile(filepath.Join(root, "long.toml"), []byte(book), 0o644))
 	t.Setenv("SHELVIA_DIR", root)
-	for _, args := range [][]string{{"list", "--format", "csv"}, {"search", `title like "A very%"`, "--format", "csv"}, {"export"}} {
+
+	commands := [][]string{
+		{"list", "--format", "csv"},
+		{"search", `title like "A very%"`, "--format", "csv"},
+		{"export"},
+	}
+	for _, args := range commands {
 		code, stdout, stderr := runCLI(service, args...)
 		require.Equal(t, 0, code, stderr)
 		rows, err := csv.NewReader(strings.NewReader(stdout)).ReadAll()
@@ -197,7 +208,11 @@ body = "A body"
 	require.NoError(t, os.WriteFile(filepath.Join(root, "book.toml"), []byte(data), 0o644))
 	t.Setenv("SHELVIA_DIR", root)
 
-	for _, args := range [][]string{{"list", "--format", "csv"}, {"search", `title = "A, book"`, "--format", "csv"}} {
+	commands := [][]string{
+		{"list", "--format", "csv"},
+		{"search", `title = "A, book"`, "--format", "csv"},
+	}
+	for _, args := range commands {
 		code, stdout, stderr := runCLI(service, args...)
 		require.Equal(t, 0, code, stderr)
 		rows, err := csv.NewReader(strings.NewReader(stdout)).ReadAll()
@@ -213,8 +228,14 @@ body = "A body"
 	rows, err := csv.NewReader(strings.NewReader(stdout)).ReadAll()
 	require.NoError(t, err)
 	require.Equal(t, [][]string{
-		{"title", "author", "rating", "read_date", "genre", "publisher", "edition", "imprint", "series", "translator", "thoughts.summary", "thoughts.body"},
-		{"A, book", `["Alice","Bob"]`, "90", "2024-01-02", `["Novel"]`, "Example Publisher", "", "", "", `["Taro","Jiro"]`, "A summary", "A body"},
+		{
+			"title", "author", "rating", "read_date", "genre", "publisher",
+			"edition", "imprint", "series", "translator", "thoughts.summary", "thoughts.body",
+		},
+		{
+			"A, book", `["Alice","Bob"]`, "90", "2024-01-02", `["Novel"]`, "Example Publisher",
+			"", "", "", `["Taro","Jiro"]`, "A summary", "A body",
+		},
 	}, rows)
 
 	code, stdout, stderr = runCLI(service, "search", `title = "missing"`, "--format", "csv")

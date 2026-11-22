@@ -21,15 +21,22 @@ func TestStoreList(t *testing.T) {
 }
 
 func TestOrderArrayUsesValues(t *testing.T) {
-	allowed, err := domain.NewAllowedValues(domain.AllowedValuesInput{Genres: []string{"Novel"}, Publishers: []string{"Example Publisher"}, Imprints: []string{"Example Paperback"}, Editions: []domain.EditionInput{{Name: "Paperback", ImprintRequired: true}}})
+	allowed, err := domain.NewAllowedValues(domain.AllowedValuesInput{
+		Genres:     []string{"Novel"},
+		Publishers: []string{"Example Publisher"},
+		Imprints:   []string{"Example Paperback"},
+		Editions:   []domain.EditionInput{{Name: "Paperback", ImprintRequired: true}},
+	})
 	require.NoError(t, err)
 	books := []domain.Book{
 		mustBook(t, allowed, "Letter", "A", 80, "2024-01-01", "Novel", ""),
 		mustBook(t, allowed, "Symbol", "<", 80, "2024-01-01", "Novel", ""),
 	}
-	table, err := (Store{}).Query(books, "rating >= 0 order by author")
+
+	booksFound, err := (Store{}).Query(books, "rating >= 0 order by author")
+
 	require.NoError(t, err)
-	require.Equal(t, []string{"Symbol", "Letter"}, titles(table))
+	require.Equal(t, []string{"Symbol", "Letter"}, titles(booksFound))
 }
 
 func TestStoreQuery(t *testing.T) {
@@ -63,20 +70,30 @@ func TestStoreQuery(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			books := testBooks(t)
 
-			table, err := Store{}.Query(books, tt.where)
+			booksFound, err := Store{}.Query(books, tt.where)
 
 			require.NoError(t, err)
-			got := titles(table)
+			got := titles(booksFound)
 			require.Equal(t, tt.want, got)
 		})
 	}
 }
 
 func TestStoreQueryArrayAndLiteralSemantics(t *testing.T) {
-	allowed, err := domain.NewAllowedValues(domain.AllowedValuesInput{Genres: []string{"Novel", "Technical"}, Publishers: []string{"Example Publisher"}})
+	allowed, err := domain.NewAllowedValues(domain.AllowedValuesInput{
+		Genres:     []string{"Novel", "Technical"},
+		Publishers: []string{"Example Publisher"},
+	})
 	require.NoError(t, err)
 	date := time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC)
-	book, err := domain.NewBook(domain.BookDraft{Title: "A' OR 1=1", Authors: []string{"Alice", "Bob"}, Genres: []string{"Novel", "Technical"}, Rating: intPointer(90), ReadDate: date, Publisher: "Example Publisher"}, allowed)
+	book, err := domain.NewBook(domain.BookDraft{
+		Title:     "A' OR 1=1",
+		Authors:   []string{"Alice", "Bob"},
+		Genres:    []string{"Novel", "Technical"},
+		Rating:    intPointer(90),
+		ReadDate:  date,
+		Publisher: "Example Publisher",
+	}, allowed)
 	require.NoError(t, err)
 
 	for _, tc := range []struct {
@@ -92,9 +109,10 @@ func TestStoreQueryArrayAndLiteralSemantics(t *testing.T) {
 		{`translator = "Other" or title = "missing"`, 0},
 	} {
 		t.Run(tc.query, func(t *testing.T) {
-			table, err := (Store{}).Query([]domain.Book{book}, tc.query)
+			booksFound, err := (Store{}).Query([]domain.Book{book}, tc.query)
+
 			require.NoError(t, err)
-			require.Len(t, table, tc.count)
+			require.Len(t, booksFound, tc.count)
 		})
 	}
 }
@@ -159,7 +177,13 @@ func testBooks(t *testing.T) []domain.Book {
 	}
 }
 
-func mustBook(t *testing.T, allowed domain.AllowedValues, title, author string, rating int, date string, genre string, translator string) domain.Book {
+func mustBook(
+	t *testing.T,
+	allowed domain.AllowedValues,
+	title, author string,
+	rating int,
+	date, genre, translator string,
+) domain.Book {
 	t.Helper()
 	readDate, err := time.Parse("2006-01-02", date)
 	require.NoError(t, err)

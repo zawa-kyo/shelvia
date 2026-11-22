@@ -2,7 +2,6 @@ package presentation
 
 import (
 	"encoding/json"
-	"fmt"
 	"strconv"
 
 	"github.com/zawa-kyo/shelvia/internal/application"
@@ -28,18 +27,62 @@ func outputTable(output application.Output) tableData {
 }
 
 func bookListTable(books []domain.Book) tableData {
-	table := tableData{Headers: []string{"read_date", "rating", "title", "author", "genre", "publisher"}}
+	table := tableData{Headers: []string{
+		"read_date",
+		"rating",
+		"title",
+		"author",
+		"genre",
+		"publisher",
+	}}
+
 	for _, book := range books {
-		table.Rows = append(table.Rows, []string{book.ReadDate().String(), strconv.Itoa(book.Rating().Int()), book.Title().String(), arrayJSON(book.Authors()), arrayJSON(book.Genres()), book.Publisher().String()})
+		table.Rows = append(table.Rows, []string{
+			book.ReadDate().String(),
+			strconv.Itoa(book.Rating().Int()),
+			book.Title().String(),
+			arrayJSON(book.Authors()),
+			arrayJSON(book.Genres()),
+			book.Publisher().String(),
+		})
 	}
+
 	return table
 }
 
 func exportTable(books []domain.Book) tableData {
-	table := tableData{Headers: []string{"title", "author", "rating", "read_date", "genre", "publisher", "edition", "imprint", "series", "translator", "thoughts.summary", "thoughts.body"}}
+	table := tableData{Headers: []string{
+		"title",
+		"author",
+		"rating",
+		"read_date",
+		"genre",
+		"publisher",
+		"edition",
+		"imprint",
+		"series",
+		"translator",
+		"thoughts.summary",
+		"thoughts.body",
+	}}
+
 	for _, book := range books {
-		table.Rows = append(table.Rows, []string{book.Title().String(), arrayJSON(book.Authors()), fmt.Sprint(book.Rating().Int()), book.ReadDate().String(), arrayJSON(book.Genres()), book.Publisher().String(), book.Edition().String(), book.Imprint().String(), book.Series().String(), arrayJSON(book.Translators()), book.Summary().String(), book.Body().String()})
+		table.Rows = append(table.Rows, []string{
+			book.Title().String(),
+			arrayJSON(book.Authors()),
+			strconv.Itoa(book.Rating().Int()),
+			book.ReadDate().String(),
+			arrayJSON(book.Genres()),
+			book.Publisher().String(),
+			book.Edition().String(),
+			book.Imprint().String(),
+			book.Series().String(),
+			arrayJSON(book.Translators()),
+			book.Summary().String(),
+			book.Body().String(),
+		})
 	}
+
 	return table
 }
 
@@ -56,11 +99,12 @@ func bookDetailsTable(book domain.Book) tableData {
 		{"path", book.FilePath().String()},
 		{"title", book.Title().String()},
 		{"author", arrayJSON(book.Authors())},
-		{"rating", fmt.Sprintf("%d", book.Rating().Int())},
+		{"rating", strconv.Itoa(book.Rating().Int())},
 		{"read_date", book.ReadDate().String()},
 		{"genre", arrayJSON(book.Genres())},
 		{"publisher", book.Publisher().String()},
 	}
+
 	if value := book.Edition().String(); value != "" {
 		rows = append(rows, []string{"edition", value})
 	}
@@ -79,5 +123,6 @@ func bookDetailsTable(book domain.Book) tableData {
 	if value := book.Body().String(); value != "" {
 		rows = append(rows, []string{"body", value})
 	}
+
 	return tableData{Headers: []string{"field", "value"}, Rows: rows}
 }
