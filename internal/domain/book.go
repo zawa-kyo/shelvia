@@ -68,7 +68,6 @@ func NewBook(draft BookDraft, allowed AllowedValues) (Book, error) {
 	if draft.Rating == nil {
 		return Book{}, validationError("rating", "required")
 	}
-
 	rating, err := NewRating(*draft.Rating)
 	if err != nil {
 		return Book{}, err
@@ -140,9 +139,20 @@ func validateEditionAndImprint(draft BookDraft, allowed AllowedValues) (Edition,
 	return edition, imprint, nil
 }
 
-func (book Book) Authors() []string     { return append([]string(nil), book.authors...) }
-func (book Book) Genres() []string      { return append([]string(nil), book.genres...) }
-func (book Book) Translators() []string { return append([]string(nil), book.translators...) }
+// Authors returns a copy of the author names.
+func (book Book) Authors() []string {
+	return append([]string(nil), book.authors...)
+}
+
+// Genres returns a copy of the genre names.
+func (book Book) Genres() []string {
+	return append([]string(nil), book.genres...)
+}
+
+// Translators returns a copy of the translator names.
+func (book Book) Translators() []string {
+	return append([]string(nil), book.translators...)
+}
 
 // Returns the book title.
 func (book Book) Title() Title {

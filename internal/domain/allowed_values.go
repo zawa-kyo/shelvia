@@ -46,10 +46,12 @@ func NewAllowedValues(input AllowedValuesInput) (AllowedValues, error) {
 	if err != nil {
 		return AllowedValues{}, err
 	}
+
 	publishers, err := buildRequiredStringSet("publisher", input.Publishers, NewPublisher)
 	if err != nil {
 		return AllowedValues{}, err
 	}
+
 	imprints, err := buildRequiredStringSet("imprint", input.Imprints, func(value string) (stringer, error) {
 		imprint, err := NewImprint(value)
 		if err != nil {
@@ -116,7 +118,11 @@ type stringer interface {
 	String() string
 }
 
-func buildRequiredStringSet[T stringer](field string, rawValues []string, newValue func(string) (T, error)) (map[string]struct{}, error) {
+func buildRequiredStringSet[T stringer](
+	field string,
+	rawValues []string,
+	newValue func(string) (T, error),
+) (map[string]struct{}, error) {
 	values := make(map[string]struct{}, len(rawValues))
 	for _, raw := range rawValues {
 		value, err := newValue(raw)
