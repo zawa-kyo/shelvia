@@ -10,18 +10,13 @@ import (
 )
 
 func TestStoreList(t *testing.T) {
-	t.Run("read_date descとtitle ascで表示列を返す", func(t *testing.T) {
+	t.Run("read_date descとtitle ascで書籍を返す", func(t *testing.T) {
 		books := testBooks(t)
-		wantRows := [][]string{
-			{"2024-01-02", "90", "Alpha", `["Author A"]`, `["Novel"]`, "Example Publisher"},
-			{"2024-01-02", "70", "Beta", `["Author B"]`, `["Technical"]`, "Example Publisher"},
-			{"2024-01-01", "80", "Gamma", `["Author C"]`, `["Novel"]`, "Example Publisher"},
-		}
 
-		table, err := Store{}.List(books)
+		result, err := Store{}.List(books)
 
 		require.NoError(t, err)
-		require.Equal(t, wantRows, table.Rows)
+		require.Equal(t, []string{"Alpha", "Beta", "Gamma"}, titles(result))
 	})
 }
 
@@ -34,7 +29,7 @@ func TestOrderArrayUsesValues(t *testing.T) {
 	}
 	table, err := (Store{}).Query(books, "rating >= 0 order by author")
 	require.NoError(t, err)
-	require.Equal(t, []string{"Symbol", "Letter"}, titles(table.Rows))
+	require.Equal(t, []string{"Symbol", "Letter"}, titles(table))
 }
 
 func TestStoreQuery(t *testing.T) {
@@ -71,7 +66,7 @@ func TestStoreQuery(t *testing.T) {
 			table, err := Store{}.Query(books, tt.where)
 
 			require.NoError(t, err)
-			got := titles(table.Rows)
+			got := titles(table)
 			require.Equal(t, tt.want, got)
 		})
 	}
@@ -99,7 +94,7 @@ func TestStoreQueryArrayAndLiteralSemantics(t *testing.T) {
 		t.Run(tc.query, func(t *testing.T) {
 			table, err := (Store{}).Query([]domain.Book{book}, tc.query)
 			require.NoError(t, err)
-			require.Len(t, table.Rows, tc.count)
+			require.Len(t, table, tc.count)
 		})
 	}
 }
@@ -193,10 +188,10 @@ func intPointer(value int) *int {
 	return &value
 }
 
-func titles(rows [][]string) []string {
-	got := make([]string, len(rows))
-	for i, row := range rows {
-		got[i] = row[2]
+func titles(books []domain.Book) []string {
+	got := make([]string, len(books))
+	for i, book := range books {
+		got[i] = book.Title().String()
 	}
 	return got
 }

@@ -176,3 +176,54 @@ func runCLI(service application.Service, args ...string) (int, string, string) {
 	code := cli.Run(args, service, &stdout, &stderr)
 	return code, stdout.String(), stderr.String()
 }
+
+func TestBookOutputFormats(t *testing.T) {
+	root := t.TempDir()
+	service := application.NewService(localfs.Repository{}, queryengine.Store{})
+	require.NoError(t, localfs.Repository{}.Init(root))
+	require.NoError(t, os.Remove(filepath.Join(root, "example.toml")))
+	data := `title = "A, book"
+author = ["Alice", "Bob"]
+genre = ["Novel"]
+translator = ["Taro", "Jiro"]
+rating = 90
+read_date = 2024-01-02
+publisher = "Example Publisher"
+
+[thoughts]
+summary = "A summary"
+body = "A body"
+`
+	require.NoError(t, os.WriteFile(filepath.Join(root, "book.toml"), []byte(data), 0o644))
+	t.Setenv("SHELVIA_DIR", root)
+
+	for _, args := range [][]string{{"list", "--format", "csv"}, {"search", `title = "A, book"`, "--format", "csv"}} {
+		code, stdout, stderr := runCLI(service, args...)
+		require.Equal(t, 0, code, stderr)
+		rows, err := csv.NewReader(strings.NewReader(stdout)).ReadAll()
+		require.NoError(t, err)
+		require.Equal(t, [][]string{
+			{"read_date", "rating", "title", "author", "genre", "publisher"},
+			{"2024-01-02", "90", "A, book", `["Alice","Bob"]`, `["Novel"]`, "Example Publisher"},
+		}, rows)
+	}
+
+	code, stdout, stderr := runCLI(service, "export")
+	require.Equal(t, 0, code, stderr)
+	rows, err := csv.NewReader(strings.NewReader(stdout)).ReadAll()
+	require.NoError(t, err)
+	require.Equal(t, [][]string{
+		{"title", "author", "rating", "read_date", "genre", "publisher", "edition", "imprint", "series", "translator", "thoughts.summary", "thoughts.body"},
+		{"A, book", `["Alice","Bob"]`, "90", "2024-01-02", `["Novel"]`, "Example Publisher", "", "", "", `["Taro","Jiro"]`, "A summary", "A body"},
+	}, rows)
+
+	code, stdout, stderr = runCLI(service, "search", `title = "missing"`, "--format", "csv")
+	require.Equal(t, 0, code, stderr)
+	require.Equal(t, "read_date,rating,title,author,genre,publisher\n", stdout)
+
+	code, stdout, stderr = runCLI(service, "show", "A, book")
+	require.Equal(t, 0, code, stderr)
+	for _, value := range []string{"book.toml", "A, book", `["Alice","Bob"]`, `["Novel"]`, `["Taro","Jiro"]`, "A summary", "A body"} {
+		require.Contains(t, stdout, value)
+	}
+}

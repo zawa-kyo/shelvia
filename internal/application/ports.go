@@ -56,6 +56,6 @@ type ShelfRepository interface {
 
 // Searches validated books without exposing the query backend.
 type QueryStore interface {
-	List(books []domain.Book) (Table, error)
-	Query(books []domain.Book, where string) (Table, error)
+	List(books []domain.Book) ([]domain.Book, error)
+	Query(books []domain.Book, where string) ([]domain.Book, error)
 }

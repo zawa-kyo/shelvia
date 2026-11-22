@@ -1,6 +1,10 @@
 package application
 
-import "time"
+import (
+	"time"
+
+	"github.com/zawa-kyo/shelvia/internal/domain"
+)
 
 // CommandKind identifies a supported CLI command.
 type CommandKind int
@@ -26,15 +30,10 @@ type Command struct {
 	Format    string
 }
 
-// Table is a presentation-neutral tabular result.
-type Table struct {
-	Headers []string
-	Rows    [][]string
-}
-
-// Output is the presentation-neutral command result.
+// Output contains the data produced by a command.
 type Output struct {
+	Kind    CommandKind
 	Message string
-	Detail  bool
-	Table   Table
+	Books   []domain.Book
+	Book    domain.Book
 }

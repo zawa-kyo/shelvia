@@ -34,20 +34,21 @@ func TestServiceRunValidate(t *testing.T) {
 
 func TestServiceRunListAndSearch(t *testing.T) {
 	t.Run("listは検証済みbookをquery portへ渡す", func(t *testing.T) {
-		query := &recordingQuery{table: Table{Headers: []string{"title"}, Rows: [][]string{{"A"}}}}
+		query := &recordingQuery{}
 		service := NewService(fakeShelf{data: validShelfData()}, query)
 		command := Command{Kind: List, ShelfRoot: "shelf"}
 
 		output, err := service.Run(command)
 
 		require.NoError(t, err)
-		require.Equal(t, query.table, output.Table)
+		require.Equal(t, query.books, output.Books)
+		require.Equal(t, List, output.Kind)
 		require.Equal(t, 1, query.listCount)
 		require.Len(t, query.books, 2)
 	})
 
 	t.Run("searchはwhere fragmentをquery portへ渡す", func(t *testing.T) {
-		query := &recordingQuery{table: Table{Headers: []string{"title"}, Rows: [][]string{{"B"}}}}
+		query := &recordingQuery{}
 		service := NewService(fakeShelf{data: validShelfData()}, query)
 		command := Command{Kind: Search, ShelfRoot: "shelf", Where: `rating >= 90`}
 
@@ -118,9 +119,9 @@ func TestServiceRunShowAndPath(t *testing.T) {
 		output, err := service.Run(command)
 
 		require.NoError(t, err)
-		require.Equal(t, []string{"field", "value"}, output.Table.Headers)
-		require.Contains(t, output.Table.Rows, []string{"title", "A"})
-		require.Contains(t, output.Table.Rows, []string{"path", "A.toml"})
+		require.Equal(t, Show, output.Kind)
+		require.Equal(t, "A", output.Book.Title().String())
+		require.Equal(t, "A.toml", output.Book.FilePath().String())
 	})
 
 	t.Run("pathはtitleに一致する1冊のファイルパスを返す", func(t *testing.T) {
@@ -240,30 +241,29 @@ func (shelf *recordingShelf) Load(string) (ShelfData, error) {
 
 type fakeQuery struct{}
 
-func (fakeQuery) List([]domain.Book) (Table, error) {
-	return Table{}, nil
+func (fakeQuery) List([]domain.Book) ([]domain.Book, error) {
+	return nil, nil
 }
 
-func (fakeQuery) Query([]domain.Book, string) (Table, error) {
-	return Table{}, nil
+func (fakeQuery) Query([]domain.Book, string) ([]domain.Book, error) {
+	return nil, nil
 }
 
 type recordingQuery struct {
-	table     Table
 	err       error
 	listCount int
 	where     string
 	books     []domain.Book
 }
 
-func (query *recordingQuery) List(books []domain.Book) (Table, error) {
+func (query *recordingQuery) List(books []domain.Book) ([]domain.Book, error) {
 	query.listCount++
 	query.books = books
-	return query.table, query.err
+	return books, query.err
 }
 
-func (query *recordingQuery) Query(books []domain.Book, where string) (Table, error) {
+func (query *recordingQuery) Query(books []domain.Book, where string) ([]domain.Book, error) {
 	query.books = books
 	query.where = where
-	return query.table, query.err
+	return books, query.err
 }

@@ -13,7 +13,8 @@ import (
 )
 
 // WriteCSV writes a complete table as CSV.
-func WriteCSV(out io.Writer, result application.Table) error {
+func WriteCSV(out io.Writer, output application.Output) error {
+	result := outputTable(output)
 	writer := csv.NewWriter(out)
 	if err := writer.Write(result.Headers); err != nil {
 		return err
@@ -56,10 +57,11 @@ func Write(out io.Writer, output application.Output) {
 		fmt.Fprintln(out, titleStyle.Render(output.Message))
 		return
 	}
-	if len(output.Table.Headers) == 0 {
+	result := outputTable(output)
+	if len(result.Headers) == 0 {
 		return
 	}
-	writeTable(out, output.Table, output.Detail)
+	writeTable(out, result, output.Kind == application.Show)
 }
 
 // Writes a compact user-facing error.
@@ -70,7 +72,7 @@ func WriteError(out io.Writer, err error) {
 	fmt.Fprintln(out, err.Error())
 }
 
-func writeTable(out io.Writer, result application.Table, detail bool) {
+func writeTable(out io.Writer, result tableData, detail bool) {
 	fmt.Fprintln(out, titleStyle.Render("Shelvia books"))
 	fmt.Fprintln(out, summaryStyle.Render(strconv.Itoa(len(result.Rows))+" row(s)"))
 	fmt.Fprintln(out)

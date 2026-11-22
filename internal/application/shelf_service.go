@@ -1,7 +1,6 @@
 package application
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -44,15 +43,15 @@ func (service Service) Run(command Command) (Output, error) {
 		if err != nil {
 			return Output{}, err
 		}
-		table, err := service.query.List(books)
-		return Output{Table: table}, err
+		books, err = service.query.List(books)
+		return Output{Kind: List, Books: books}, err
 	case Search:
 		books, err := service.loadBooks(command.ShelfRoot)
 		if err != nil {
 			return Output{}, err
 		}
-		table, err := service.query.Query(books, command.Where)
-		return Output{Table: table}, err
+		books, err = service.query.Query(books, command.Where)
+		return Output{Kind: Search, Books: books}, err
 	case Show:
 		books, err := service.loadBooks(command.ShelfRoot)
 		if err != nil {
@@ -62,13 +61,13 @@ func (service Service) Run(command Command) (Output, error) {
 		if err != nil {
 			return Output{}, err
 		}
-		return Output{Table: bookDetailsTable(book), Detail: true}, nil
+		return Output{Kind: Show, Book: book}, nil
 	case Export:
 		books, err := service.loadBooks(command.ShelfRoot)
 		if err != nil {
 			return Output{}, err
 		}
-		return Output{Table: exportTable(books)}, nil
+		return Output{Kind: Export, Books: books}, nil
 	case Path:
 		books, err := service.loadBooks(command.ShelfRoot)
 		if err != nil {
@@ -82,22 +81,6 @@ func (service Service) Run(command Command) (Output, error) {
 	default:
 		return Output{}, fmt.Errorf("unknown command")
 	}
-}
-
-func exportTable(books []domain.Book) Table {
-	table := Table{Headers: []string{"title", "author", "rating", "read_date", "genre", "publisher", "edition", "imprint", "series", "translator", "thoughts.summary", "thoughts.body"}}
-	for _, book := range books {
-		table.Rows = append(table.Rows, []string{book.Title().String(), arrayJSON(book.Authors()), fmt.Sprint(book.Rating().Int()), book.ReadDate().String(), arrayJSON(book.Genres()), book.Publisher().String(), book.Edition().String(), book.Imprint().String(), book.Series().String(), arrayJSON(book.Translators()), book.Summary().String(), book.Body().String()})
-	}
-	return table
-}
-
-func arrayJSON(values []string) string {
-	if values == nil {
-		values = []string{}
-	}
-	data, _ := json.Marshal(values)
-	return string(data)
 }
 
 func (service Service) loadBooks(root string) ([]domain.Book, error) {
@@ -183,35 +166,4 @@ func findBookByTitle(books []domain.Book, title string) (domain.Book, error) {
 		return domain.Book{}, fmt.Errorf("book title is ambiguous: %s (%s)", title, strings.Join(paths, ", "))
 	}
 	return matches[0], nil
-}
-
-func bookDetailsTable(book domain.Book) Table {
-	rows := [][]string{
-		{"path", book.FilePath().String()},
-		{"title", book.Title().String()},
-		{"author", arrayJSON(book.Authors())},
-		{"rating", fmt.Sprintf("%d", book.Rating().Int())},
-		{"read_date", book.ReadDate().String()},
-		{"genre", arrayJSON(book.Genres())},
-		{"publisher", book.Publisher().String()},
-	}
-	if value := book.Edition().String(); value != "" {
-		rows = append(rows, []string{"edition", value})
-	}
-	if value := book.Imprint().String(); value != "" {
-		rows = append(rows, []string{"imprint", value})
-	}
-	if value := book.Series().String(); value != "" {
-		rows = append(rows, []string{"series", value})
-	}
-	if values := book.Translators(); len(values) != 0 {
-		rows = append(rows, []string{"translator", arrayJSON(values)})
-	}
-	if value := book.Summary().String(); value != "" {
-		rows = append(rows, []string{"summary", value})
-	}
-	if value := book.Body().String(); value != "" {
-		rows = append(rows, []string{"body", value})
-	}
-	return Table{Headers: []string{"field", "value"}, Rows: rows}
 }

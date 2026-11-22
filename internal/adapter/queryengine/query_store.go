@@ -8,63 +8,60 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/zawa-kyo/shelvia/internal/application"
 	"github.com/zawa-kyo/shelvia/internal/domain"
 
 	_ "modernc.org/sqlite"
 )
 
-var headers = []string{"read_date", "rating", "title", "author", "genre", "publisher"}
-
-// Store provides table queries over validated books.
+// Store queries validated books.
 type Store struct{}
 
 // Lists books in the default order.
-func (Store) List(books []domain.Book) (application.Table, error) {
+func (Store) List(books []domain.Book) ([]domain.Book, error) {
 	return queryBooks(books, queryFragment{})
 }
 
 // Filters books with a restricted SQL-like where fragment.
-func (Store) Query(books []domain.Book, where string) (application.Table, error) {
+func (Store) Query(books []domain.Book, where string) ([]domain.Book, error) {
 	query, err := parseQueryFragment(where)
 	if err != nil {
-		return application.Table{}, err
+		return nil, err
 	}
 	return queryBooks(books, query)
 }
 
-func queryBooks(books []domain.Book, query queryFragment) (application.Table, error) {
+func queryBooks(books []domain.Book, query queryFragment) ([]domain.Book, error) {
 	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
-		return application.Table{}, err
+		return nil, err
 	}
 	defer db.Close()
 	// An in-memory SQLite database belongs to a single connection.
 	db.SetMaxOpenConns(1)
 	if _, err := db.Exec(`PRAGMA case_sensitive_like = ON`); err != nil {
-		return application.Table{}, err
+		return nil, err
 	}
 	if _, err := db.Exec(`CREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT, rating INTEGER, read_date TEXT, publisher TEXT, edition TEXT, imprint TEXT, series TEXT, author TEXT, genre TEXT, translator TEXT)`); err != nil {
-		return application.Table{}, err
+		return nil, err
 	}
 	tx, err := db.Begin()
 	if err != nil {
-		return application.Table{}, err
+		return nil, err
 	}
 	defer tx.Rollback()
 	stmt, err := tx.Prepare(`INSERT INTO books VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
-		return application.Table{}, err
+		return nil, err
 	}
 	defer stmt.Close()
 	for i, book := range books {
 		row := rowFromBook(book)
 		if _, err := stmt.Exec(i, book.Title().String(), book.Rating().Int(), book.ReadDate().String(), book.Publisher().String(), nullIfEmpty(row.scalars["edition"]), nullIfEmpty(row.scalars["imprint"]), nullIfEmpty(row.scalars["series"]), jsonArray(book.Authors()), jsonArray(book.Genres()), jsonArray(book.Translators())); err != nil {
-			return application.Table{}, err
+			return nil, err
 		}
 	}
 	if err := tx.Commit(); err != nil {
-		return application.Table{}, err
+		return nil, err
 	}
 	condition := "1"
 	var args []any
@@ -73,21 +70,21 @@ func queryBooks(books []domain.Book, query queryFragment) (application.Table, er
 	}
 	rows, err := db.Query("SELECT id FROM books WHERE "+condition, args...)
 	if err != nil {
-		return application.Table{}, err
+		return nil, err
 	}
 	defer rows.Close()
 	filtered := make([]domain.Book, 0, len(books))
 	for rows.Next() {
 		var id int
 		if err := rows.Scan(&id); err != nil {
-			return application.Table{}, err
+			return nil, err
 		}
 		filtered = append(filtered, books[id])
 	}
 	if err := rows.Err(); err != nil {
-		return application.Table{}, err
+		return nil, err
 	}
-	return tableFromBooks(sortQueriedBooks(filtered, query.order)), nil
+	return sortQueriedBooks(filtered, query.order), nil
 }
 
 func sortBooks(books []domain.Book) []domain.Book {
@@ -138,21 +135,6 @@ func compareByColumn(left, right domain.Book, column string) int {
 	default:
 		return strings.Compare(leftRow.scalars[column], rightRow.scalars[column])
 	}
-}
-
-func tableFromBooks(books []domain.Book) application.Table {
-	rows := make([][]string, len(books))
-	for i, book := range books {
-		rows[i] = []string{
-			book.ReadDate().String(),
-			strconv.Itoa(book.Rating().Int()),
-			book.Title().String(),
-			jsonArray(book.Authors()),
-			jsonArray(book.Genres()),
-			book.Publisher().String(),
-		}
-	}
-	return application.Table{Headers: headers, Rows: rows}
 }
 
 func jsonArray(values []string) string {
