@@ -2,7 +2,6 @@ package presentation
 
 import (
 	"encoding/json"
-	"fmt"
 	"strconv"
 
 	"github.com/zawa-kyo/shelvia/internal/application"
@@ -36,6 +35,7 @@ func bookListTable(books []domain.Book) tableData {
 		"genre",
 		"publisher",
 	}}
+
 	for _, book := range books {
 		table.Rows = append(table.Rows, []string{
 			book.ReadDate().String(),
@@ -46,6 +46,7 @@ func bookListTable(books []domain.Book) tableData {
 			book.Publisher().String(),
 		})
 	}
+
 	return table
 }
 
@@ -64,11 +65,12 @@ func exportTable(books []domain.Book) tableData {
 		"thoughts.summary",
 		"thoughts.body",
 	}}
+
 	for _, book := range books {
 		table.Rows = append(table.Rows, []string{
 			book.Title().String(),
 			arrayJSON(book.Authors()),
-			fmt.Sprint(book.Rating().Int()),
+			strconv.Itoa(book.Rating().Int()),
 			book.ReadDate().String(),
 			arrayJSON(book.Genres()),
 			book.Publisher().String(),
@@ -80,6 +82,7 @@ func exportTable(books []domain.Book) tableData {
 			book.Body().String(),
 		})
 	}
+
 	return table
 }
 
@@ -96,11 +99,12 @@ func bookDetailsTable(book domain.Book) tableData {
 		{"path", book.FilePath().String()},
 		{"title", book.Title().String()},
 		{"author", arrayJSON(book.Authors())},
-		{"rating", fmt.Sprintf("%d", book.Rating().Int())},
+		{"rating", strconv.Itoa(book.Rating().Int())},
 		{"read_date", book.ReadDate().String()},
 		{"genre", arrayJSON(book.Genres())},
 		{"publisher", book.Publisher().String()},
 	}
+
 	if value := book.Edition().String(); value != "" {
 		rows = append(rows, []string{"edition", value})
 	}
@@ -119,5 +123,6 @@ func bookDetailsTable(book domain.Book) tableData {
 	if value := book.Body().String(); value != "" {
 		rows = append(rows, []string{"body", value})
 	}
+
 	return tableData{Headers: []string{"field", "value"}, Rows: rows}
 }

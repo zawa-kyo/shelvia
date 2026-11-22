@@ -13,8 +13,9 @@ func TestWrite(t *testing.T) {
 		var out bytes.Buffer
 		output := application.Output{Message: "Validated 1 book, 1 config file."}
 
-		Write(&out, output)
+		err := Write(&out, output)
 
+		require.NoError(t, err)
 		require.Equal(t, "Validated 1 book, 1 config file.\n", out.String())
 	})
 
@@ -28,8 +29,9 @@ func TestWrite(t *testing.T) {
 			},
 		}
 
-		writeTable(&out, result, false)
+		err := writeTable(&out, result, false)
 
+		require.NoError(t, err)
 		got := out.String()
 		for _, want := range []string{
 			"Shelvia books",
@@ -52,8 +54,9 @@ func TestWrite(t *testing.T) {
 	t.Run("headerがない出力には何も表示しない", func(t *testing.T) {
 		var out bytes.Buffer
 
-		Write(&out, application.Output{})
+		err := Write(&out, application.Output{})
 
+		require.NoError(t, err)
 		require.Empty(t, out.String())
 	})
 
@@ -61,8 +64,9 @@ func TestWrite(t *testing.T) {
 		var out bytes.Buffer
 		output := application.Output{Message: "Done.", Kind: application.List}
 
-		Write(&out, output)
+		err := Write(&out, output)
 
+		require.NoError(t, err)
 		require.Equal(t, "Done.\n", out.String())
 	})
 }
