@@ -48,22 +48,22 @@ func readBook(root, path string) (application.BookData, error) {
 }
 
 func stringArray(value any) ([]string, error) {
-	switch v := value.(type) {
+	switch value := value.(type) {
 	case nil:
 		return nil, nil
 	case string:
-		if strings.TrimSpace(v) == "" {
+		if strings.TrimSpace(value) == "" {
 			return []string{}, nil
 		}
-		return []string{v}, nil
+		return []string{value}, nil
 	case []any:
-		values := make([]string, 0, len(v))
-		for _, item := range v {
-			s, ok := item.(string)
+		values := make([]string, 0, len(value))
+		for _, item := range value {
+			text, ok := item.(string)
 			if !ok {
 				return nil, fmt.Errorf("expected an array of strings")
 			}
-			values = append(values, s)
+			values = append(values, text)
 		}
 		return values, nil
 	default:

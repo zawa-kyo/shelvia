@@ -93,12 +93,14 @@ func findBookFiles(root string) ([]string, error) {
 		if !strings.EqualFold(filepath.Ext(path), ".toml") {
 			return nil
 		}
+
 		if filepath.Base(path) == configFileName {
 			if samePath(filepath.Dir(path), root) {
 				return nil
 			}
 			return fmt.Errorf("%s: misplaced config.toml", relativePath(root, path))
 		}
+
 		paths = append(paths, path)
 		return nil
 	})
