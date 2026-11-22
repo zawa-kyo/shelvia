@@ -47,6 +47,24 @@ func TestRun(t *testing.T) {
 		require.Equal(t, "load failed\n", stderr.String())
 	})
 
+	for _, tc := range []struct {
+		command string
+		output  application.Output
+	}{
+		{"validate", application.Output{Message: "Done."}},
+		{"list", application.Output{Kind: application.List}},
+	} {
+		t.Run(tc.command+" の書き込みエラーを標準エラーに出力する", func(t *testing.T) {
+			service := &stubRunner{output: tc.output}
+			var stderr bytes.Buffer
+
+			code := Run([]string{"--shelf", "my-shelf", tc.command}, service, failingWriter{}, &stderr)
+
+			require.Equal(t, 1, code)
+			require.Equal(t, "write failed\n", stderr.String())
+		})
+	}
+
 	t.Run("CSV出力の書き込みエラーを標準エラーに出力する", func(t *testing.T) {
 		service := &stubRunner{output: application.Output{Kind: application.List}}
 		var stderr bytes.Buffer

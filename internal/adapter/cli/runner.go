@@ -21,7 +21,7 @@ func Run(args []string, service commandRunner, out io.Writer, errOut io.Writer) 
 			if command.Format == "csv" {
 				err = presentation.WriteCSV(out, output)
 			} else {
-				presentation.Write(out, output)
+				err = presentation.Write(out, output)
 			}
 			if err == nil {
 				return 0

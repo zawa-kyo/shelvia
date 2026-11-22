@@ -52,16 +52,16 @@ var (
 )
 
 // Writes user-facing command output.
-func Write(out io.Writer, output application.Output) {
+func Write(out io.Writer, output application.Output) error {
 	if output.Message != "" {
-		fmt.Fprintln(out, titleStyle.Render(output.Message))
-		return
+		_, err := fmt.Fprintln(out, titleStyle.Render(output.Message))
+		return err
 	}
 	result := outputTable(output)
 	if len(result.Headers) == 0 {
-		return
+		return nil
 	}
-	writeTable(out, result, output.Kind == application.Show)
+	return writeTable(out, result, output.Kind == application.Show)
 }
 
 // Writes a compact user-facing error.
@@ -72,11 +72,7 @@ func WriteError(out io.Writer, err error) {
 	fmt.Fprintln(out, err.Error())
 }
 
-func writeTable(out io.Writer, result tableData, detail bool) {
-	fmt.Fprintln(out, titleStyle.Render("Shelvia books"))
-	fmt.Fprintln(out, summaryStyle.Render(strconv.Itoa(len(result.Rows))+" row(s)"))
-	fmt.Fprintln(out)
-
+func writeTable(out io.Writer, result tableData, detail bool) error {
 	rendered := table.New().
 		Border(lipgloss.RoundedBorder()).
 		BorderStyle(borderStyle).
@@ -84,7 +80,10 @@ func writeTable(out io.Writer, result tableData, detail bool) {
 		Rows(normalizeRows(result.Rows, detail)...).
 		StyleFunc(tableStyle)
 
-	fmt.Fprintln(out, rendered)
+	title := titleStyle.Render("Shelvia books")
+	summary := summaryStyle.Render(strconv.Itoa(len(result.Rows)) + " row(s)")
+	_, err := fmt.Fprintf(out, "%s\n%s\n\n%s\n", title, summary, rendered)
+	return err
 }
 
 func normalizeRows(rows [][]string, detail bool) [][]string {
