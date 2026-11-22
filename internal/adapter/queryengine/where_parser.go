@@ -396,7 +396,9 @@ func (node comparison) sql() (string, []any) {
 		op = "="
 		prefix = "NOT "
 	}
-	return "CASE WHEN " + length + " = 0 THEN NULL ELSE " + prefix + "EXISTS (SELECT 1 FROM json_each(" + node.column + ") WHERE value " + op + " ?) END", []any{node.value}
+	condition := "CASE WHEN " + length + " = 0 THEN NULL ELSE " + prefix +
+		"EXISTS (SELECT 1 FROM json_each(" + node.column + ") WHERE value " + op + " ?) END"
+	return condition, []any{node.value}
 }
 
 type logical struct {
