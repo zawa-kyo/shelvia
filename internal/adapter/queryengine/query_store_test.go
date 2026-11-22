@@ -77,6 +77,33 @@ func TestStoreQuery(t *testing.T) {
 	}
 }
 
+func TestStoreQueryArrayAndLiteralSemantics(t *testing.T) {
+	allowed, err := domain.NewAllowedValues(domain.AllowedValuesInput{Genres: []string{"Novel", "Technical"}, Publishers: []string{"Example Publisher"}})
+	require.NoError(t, err)
+	date := time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC)
+	book, err := domain.NewBook(domain.BookDraft{Title: "A' OR 1=1", Authors: []string{"Alice", "Bob"}, Genres: []string{"Novel", "Technical"}, Rating: intPointer(90), ReadDate: date, Publisher: "Example Publisher"}, allowed)
+	require.NoError(t, err)
+
+	for _, tc := range []struct {
+		query string
+		count int
+	}{
+		{`author = "Bob"`, 1},
+		{`author != "Bob"`, 0},
+		{`author != "Other"`, 1},
+		{`genre like "Tech%"`, 1},
+		{`title like "a%"`, 0},
+		{`title = "A' OR 1=1"`, 1},
+		{`translator = "Other" or title = "missing"`, 0},
+	} {
+		t.Run(tc.query, func(t *testing.T) {
+			table, err := (Store{}).Query([]domain.Book{book}, tc.query)
+			require.NoError(t, err)
+			require.Len(t, table.Rows, tc.count)
+		})
+	}
+}
+
 func TestStoreQueryRejectsUnsupportedWhere(t *testing.T) {
 	tests := []struct {
 		name  string
