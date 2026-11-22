@@ -32,58 +32,19 @@ Shelvia は Clean Architecture を採用し、外部入出力の境界には Por
 
 ```text
 .
-├── cmd/
-│   └── shelvia/
-│       └── main.go
+├── cmd/shelvia/           # CLI のエントリーポイント
 ├── internal/
-│   ├── domain/
-│   │   ├── book.go
-│   │   ├── book_draft.go
-│   │   ├── allowed_values.go
-│   │   ├── author.go
-│   │   ├── edition.go
-│   │   ├── file_path.go
-│   │   ├── genre.go
-│   │   ├── imprint.go
-│   │   ├── optional_text.go
-│   │   ├── publisher.go
-│   │   ├── rating.go
-│   │   ├── read_date.go
-│   │   └── title.go
-│   ├── application/
-│   │   ├── book_lookup.go
-│   │   ├── commands.go
-│   │   ├── load_books.go
-│   │   ├── ports.go
-│   │   └── shelf_service.go
-│   └── adapter/
-│       ├── cli/
-│       │   ├── parser.go
-│       │   └── runner.go
-│       ├── localfs/
-│       │   ├── shelf_repository.go
-│       │   └── templates.go
-│       ├── queryengine/
-│       │   └── query_store.go
-│       └── presentation/
-│           └── output.go
-├── docs/
-│   ├── architecture.md
-│   ├── cli-behavior.md
-│   ├── implementation.md
-│   └── testing.md
-├── fixtures/
-│   └── shelves/
-│       ├── valid/
-│       │   └── minimal/
-│       │       ├── config.toml
-│       │       ├── example.toml
-│       │       └── Some Book.toml
-│       └── invalid/
-│           ├── nested-config/
-│           ├── missing-required/
-│           ├── unknown-config-value/
-│           └── unsafe-filename/
+│   ├── domain/            # ドメインモデルとルール
+│   ├── application/       # ユースケースとポート
+│   ├── adapter/
+│   │   ├── cli/           # 引数解析と実行
+│   │   ├── localfs/       # ファイルの読み書き
+│   │   ├── queryengine/   # 検索
+│   │   └── presentation/  # 出力の整形
+│   └── integration/       # アダプター間の結合テスト
+├── e2e/                   # CLI バイナリの E2E テスト
+├── fixtures/shelves/      # テスト用の shelf データ
+├── docs/                  # 設計ドキュメント
 ├── README-ja.md
 ├── README.md
 └── AGENTS.md
@@ -149,5 +110,5 @@ OS のコマンドライン引数を解析し、アプリケーション層の�
 `fixtures/shelves/` は、結合テストや手動検証で利用する実際の shelf データを配置するディレクトリです。
 
 - **`valid/`**: 正常に検証を通過する shelf。`minimal/` は `README` で示される基本構成を再現しています。
-- **`invalid/`**: 特定のバリデーション違反を検証するための shelf。1 ディレクトリにつき 1 つのエラー原因 (設定ファイル重複、必須項目欠落、未登録のジャンル、不正なファイル名など) を再現し、テスト名と対応させます。
+- **`invalid/`**: 特定のバリデーション違反を検証するための shelf。1 ディレクトリにつき 1 つのエラー原因 (設定ファイルの誤配置、必須項目欠落、未登録のジャンルなど) を再現し、テスト名と対応させます。
 - **モックとの分離**: `fixtures/` は本物のファイル構造としてそのまま読み込ませるものであり、テストダブル (Mock/Fake) のコードとは明確に区別します。
