@@ -14,18 +14,22 @@ func readBook(root, path string) (application.BookData, error) {
 	if err := decodeTOML(root, path, &raw); err != nil {
 		return application.BookData{}, err
 	}
+
 	authors, err := stringArray(raw.Author)
 	if err != nil {
 		return application.BookData{}, fmt.Errorf("%s: author: %w", relativePath(root, path), err)
 	}
+
 	genres, err := stringArray(raw.Genre)
 	if err != nil {
 		return application.BookData{}, fmt.Errorf("%s: genre: %w", relativePath(root, path), err)
 	}
+
 	translators, err := stringArray(raw.Translator)
 	if err != nil {
 		return application.BookData{}, fmt.Errorf("%s: translator: %w", relativePath(root, path), err)
 	}
+
 	return application.BookData{
 		Authors:     authors,
 		Genres:      genres,

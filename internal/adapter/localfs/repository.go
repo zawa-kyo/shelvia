@@ -21,6 +21,7 @@ func (Repository) Init(root string) error {
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		return err
 	}
+
 	configPath := filepath.Join(root, configFileName)
 	examplePath := filepath.Join(root, "example.toml")
 	for _, path := range []string{configPath, examplePath} {
@@ -30,6 +31,7 @@ func (Repository) Init(root string) error {
 			return err
 		}
 	}
+
 	if err := writeNewFile(configPath, []byte(configTemplate)); err != nil {
 		return err
 	}
@@ -42,11 +44,13 @@ func (Repository) CreateBook(root, title string, readDate time.Time) (string, er
 	if err != nil {
 		return "", err
 	}
+
 	path := filepath.Join(root, filename)
 	content := fmt.Sprintf(bookTemplate, tomlEscape(title), readDate.Format("2006-01-02"))
 	if err := writeNewFile(path, []byte(content)); err != nil {
 		return "", err
 	}
+
 	rel, err := filepath.Rel(root, path)
 	if err != nil {
 		return filename, nil
@@ -65,6 +69,7 @@ func (Repository) Load(root string) (application.ShelfData, error) {
 	if err != nil {
 		return application.ShelfData{}, err
 	}
+
 	books := make([]application.BookData, 0, len(paths))
 	for _, path := range paths {
 		book, err := readBook(root, path)
