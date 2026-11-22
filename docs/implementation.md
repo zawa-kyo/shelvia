@@ -51,10 +51,11 @@ Shelvia は Clean Architecture を採用し、外部入出力の境界には Por
 │   │   ├── read_date.go
 │   │   └── title.go
 │   ├── application/
+│   │   ├── book_lookup.go
 │   │   ├── commands.go
+│   │   ├── load_books.go
 │   │   ├── ports.go
-│   │   ├── shelf_service.go
-│   │   └── query_service.go
+│   │   └── shelf_service.go
 │   └── adapter/
 │       ├── cli/
 │       │   ├── parser.go
