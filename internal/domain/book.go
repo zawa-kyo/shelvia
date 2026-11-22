@@ -87,31 +87,9 @@ func NewBook(draft BookDraft, allowed AllowedValues) (Book, error) {
 		return Book{}, validationError("publisher", fmt.Sprintf("unknown publisher: %s", publisher.String()))
 	}
 
-	edition, err := NewEdition(draft.Edition)
+	edition, imprint, err := validateEditionAndImprint(draft, allowed)
 	if err != nil {
 		return Book{}, err
-	}
-	var editionRule EditionRule
-	if edition.IsSpecified() {
-		var ok bool
-		editionRule, ok = allowed.FindEdition(edition)
-		if !ok {
-			return Book{}, validationError("edition", fmt.Sprintf("unknown edition: %s", edition.String()))
-		}
-	}
-
-	imprint, err := NewImprint(draft.Imprint)
-	if err != nil {
-		return Book{}, err
-	}
-	if imprint.IsSpecified() && !edition.IsSpecified() {
-		return Book{}, validationError("imprint", fmt.Sprintf("imprint requires edition: %s", imprint.String()))
-	}
-	if edition.IsSpecified() && editionRule.ImprintRequired() && !imprint.IsSpecified() {
-		return Book{}, validationError("imprint", fmt.Sprintf("imprint is required for edition: %s", edition.String()))
-	}
-	if imprint.IsSpecified() && !allowed.ContainsImprint(imprint) {
-		return Book{}, validationError("imprint", fmt.Sprintf("unknown imprint: %s", imprint.String()))
 	}
 
 	return Book{
@@ -129,6 +107,37 @@ func NewBook(draft BookDraft, allowed AllowedValues) (Book, error) {
 		body:        NewOptionalText(draft.Body),
 		filePath:    NewFilePath(draft.FilePath),
 	}, nil
+}
+
+func validateEditionAndImprint(draft BookDraft, allowed AllowedValues) (Edition, Imprint, error) {
+	edition, err := NewEdition(draft.Edition)
+	if err != nil {
+		return Edition{}, Imprint{}, err
+	}
+	var editionRule EditionRule
+	if edition.IsSpecified() {
+		var ok bool
+		editionRule, ok = allowed.FindEdition(edition)
+		if !ok {
+			return Edition{}, Imprint{}, validationError("edition", fmt.Sprintf("unknown edition: %s", edition.String()))
+		}
+	}
+
+	imprint, err := NewImprint(draft.Imprint)
+	if err != nil {
+		return Edition{}, Imprint{}, err
+	}
+	if imprint.IsSpecified() && !edition.IsSpecified() {
+		return Edition{}, Imprint{}, validationError("imprint", fmt.Sprintf("imprint requires edition: %s", imprint.String()))
+	}
+	if edition.IsSpecified() && editionRule.ImprintRequired() && !imprint.IsSpecified() {
+		return Edition{}, Imprint{}, validationError("imprint", fmt.Sprintf("imprint is required for edition: %s", edition.String()))
+	}
+	if imprint.IsSpecified() && !allowed.ContainsImprint(imprint) {
+		return Edition{}, Imprint{}, validationError("imprint", fmt.Sprintf("unknown imprint: %s", imprint.String()))
+	}
+
+	return edition, imprint, nil
 }
 
 func (book Book) Authors() []string     { return append([]string(nil), book.authors...) }

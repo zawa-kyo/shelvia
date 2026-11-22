@@ -122,6 +122,17 @@ func TestEditionAndImprint(t *testing.T) {
 	})
 }
 
+func TestEditionValidationPrecedesImprintValidation(t *testing.T) {
+	draft := validBookDraft()
+	draft.Edition = "Unknown Edition"
+	draft.Imprint = "Unknown Imprint"
+	allowed := testAllowedValues(t)
+
+	_, err := NewBook(draft, allowed)
+
+	require.Equal(t, ValidationError{Field: "edition", Reason: "unknown edition: Unknown Edition"}, err)
+}
+
 func TestOptionalFields(t *testing.T) {
 	t.Run("任意項目は空なら未指定として記録できる", func(t *testing.T) {
 		draft := validBookDraft()
