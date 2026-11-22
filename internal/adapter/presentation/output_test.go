@@ -20,15 +20,15 @@ func TestWrite(t *testing.T) {
 
 	t.Run("tableを表示する", func(t *testing.T) {
 		var out bytes.Buffer
-		output := application.Output{Table: application.Table{
+		result := tableData{
 			Headers: []string{"read_date", "rating", "title"},
 			Rows: [][]string{
 				{"2024-01-02", "90", "Some Book"},
 				{"2024-02-03", "", "1234567890123456789012345"},
 			},
-		}}
+		}
 
-		Write(&out, output)
+		writeTable(&out, result, false)
 
 		got := out.String()
 		for _, want := range []string{
@@ -59,13 +59,7 @@ func TestWrite(t *testing.T) {
 
 	t.Run("messageがある場合はtableより優先して表示する", func(t *testing.T) {
 		var out bytes.Buffer
-		output := application.Output{
-			Message: "Done.",
-			Table: application.Table{
-				Headers: []string{"title"},
-				Rows:    [][]string{{"Some Book"}},
-			},
-		}
+		output := application.Output{Message: "Done.", Kind: application.List}
 
 		Write(&out, output)
 

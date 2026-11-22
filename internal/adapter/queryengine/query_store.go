@@ -1,45 +1,90 @@
 package queryengine
 
 import (
+	"database/sql"
 	"encoding/json"
-	"fmt"
-	"regexp"
 	"slices"
 	"sort"
 	"strconv"
 	"strings"
 
-	"github.com/zawa-kyo/shelvia/internal/application"
 	"github.com/zawa-kyo/shelvia/internal/domain"
+
+	_ "modernc.org/sqlite"
 )
 
-var headers = []string{"read_date", "rating", "title", "author", "genre", "publisher"}
-
-// Store provides table queries over validated books.
+// Store queries validated books.
 type Store struct{}
 
 // Lists books in the default order.
-func (Store) List(books []domain.Book) (application.Table, error) {
-	return tableFromBooks(sortBooks(books)), nil
+func (Store) List(books []domain.Book) ([]domain.Book, error) {
+	return queryBooks(books, queryFragment{})
 }
 
 // Filters books with a restricted SQL-like where fragment.
-func (Store) Query(books []domain.Book, where string) (application.Table, error) {
+func (Store) Query(books []domain.Book, where string) ([]domain.Book, error) {
 	query, err := parseQueryFragment(where)
 	if err != nil {
-		return application.Table{}, err
+		return nil, err
 	}
+	return queryBooks(books, query)
+}
+
+func queryBooks(books []domain.Book, query queryFragment) ([]domain.Book, error) {
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+	// An in-memory SQLite database belongs to a single connection.
+	db.SetMaxOpenConns(1)
+	if _, err := db.Exec(`PRAGMA case_sensitive_like = ON`); err != nil {
+		return nil, err
+	}
+	if _, err := db.Exec(`CREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT, rating INTEGER, read_date TEXT, publisher TEXT, edition TEXT, imprint TEXT, series TEXT, author TEXT, genre TEXT, translator TEXT)`); err != nil {
+		return nil, err
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+	stmt, err := tx.Prepare(`INSERT INTO books VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+	for i, book := range books {
+		row := rowFromBook(book)
+		if _, err := stmt.Exec(i, book.Title().String(), book.Rating().Int(), book.ReadDate().String(), book.Publisher().String(), nullIfEmpty(row.scalars["edition"]), nullIfEmpty(row.scalars["imprint"]), nullIfEmpty(row.scalars["series"]), jsonArray(book.Authors()), jsonArray(book.Genres()), jsonArray(book.Translators())); err != nil {
+			return nil, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	condition := "1"
+	var args []any
+	if query.where != nil {
+		condition, args = query.where.sql()
+	}
+	rows, err := db.Query("SELECT id FROM books WHERE "+condition, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 	filtered := make([]domain.Book, 0, len(books))
-	for _, book := range books {
-		result, err := query.where.eval(rowFromBook(book))
-		if err != nil {
-			return application.Table{}, err
+	for rows.Next() {
+		var id int
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
 		}
-		if result == truthTrue {
-			filtered = append(filtered, book)
-		}
+		filtered = append(filtered, books[id])
 	}
-	return tableFromBooks(sortQueriedBooks(filtered, query.order)), nil
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return sortQueriedBooks(filtered, query.order), nil
 }
 
 func sortBooks(books []domain.Book) []domain.Book {
@@ -92,21 +137,6 @@ func compareByColumn(left, right domain.Book, column string) int {
 	}
 }
 
-func tableFromBooks(books []domain.Book) application.Table {
-	rows := make([][]string, len(books))
-	for i, book := range books {
-		rows[i] = []string{
-			book.ReadDate().String(),
-			strconv.Itoa(book.Rating().Int()),
-			book.Title().String(),
-			jsonArray(book.Authors()),
-			jsonArray(book.Genres()),
-			book.Publisher().String(),
-		}
-	}
-	return application.Table{Headers: headers, Rows: rows}
-}
-
 func jsonArray(values []string) string {
 	if values == nil {
 		values = []string{}
@@ -147,170 +177,9 @@ func optionalText(text domain.OptionalText) string {
 	return text.String()
 }
 
-type expr interface {
-	eval(row queryRow) (truthValue, error)
-}
-
-type truthValue uint8
-
-const (
-	truthFalse truthValue = iota
-	truthTrue
-	truthUnknown
-)
-
-type comparison struct {
-	column string
-	op     string
-	value  string
-}
-
-func (node comparison) eval(row queryRow) (truthValue, error) {
-	left := row.scalars[node.column]
-	values, isArray := row.arrays[node.column]
-	if isArray && len(values) > 0 {
-		left = "present"
+func nullIfEmpty(value string) any {
+	if value == "" {
+		return nil
 	}
-	if node.op == "is null" {
-		return truthFromBool(left == ""), nil
-	}
-	if node.op == "is not null" {
-		return truthFromBool(left != ""), nil
-	}
-	if left == "" {
-		return truthUnknown, nil
-	}
-	if isArray {
-		matched := false
-		for _, value := range values {
-			if node.op == "like" {
-				matched = matched || like(value, node.value)
-			} else if node.op == "!=" {
-				matched = matched || value == node.value
-			} else {
-				matched = matched || compareString(value, node.value, node.op)
-			}
-		}
-		if node.op == "!=" {
-			matched = !matched
-		}
-		return truthFromBool(matched), nil
-	}
-	if node.column == "rating" {
-		leftNumber, err := strconv.Atoi(left)
-		if err != nil {
-			return truthFalse, err
-		}
-		rightNumber, err := strconv.Atoi(node.value)
-		if err != nil {
-			return truthFalse, fmt.Errorf("rating comparison requires a number")
-		}
-		return truthFromBool(compareInt(leftNumber, rightNumber, node.op)), nil
-	}
-	if node.op == "like" {
-		return truthFromBool(like(left, node.value)), nil
-	}
-	return truthFromBool(compareString(left, node.value, node.op)), nil
-}
-
-type logical struct {
-	op          string
-	left, right expr
-}
-
-func (node logical) eval(row queryRow) (truthValue, error) {
-	left, err := node.left.eval(row)
-	if err != nil {
-		return truthFalse, err
-	}
-	if node.op == "and" && left == truthFalse {
-		return truthFalse, nil
-	}
-	if node.op == "or" && left == truthTrue {
-		return truthTrue, nil
-	}
-	right, err := node.right.eval(row)
-	if err != nil {
-		return truthFalse, err
-	}
-	if node.op == "and" {
-		if left == truthTrue {
-			return right, nil
-		}
-		if right == truthFalse {
-			return truthFalse, nil
-		}
-		return truthUnknown, nil
-	}
-	if left == truthFalse {
-		return right, nil
-	}
-	if right == truthTrue {
-		return truthTrue, nil
-	}
-	return truthUnknown, nil
-}
-
-type negation struct {
-	inner expr
-}
-
-func (node negation) eval(row queryRow) (truthValue, error) {
-	value, err := node.inner.eval(row)
-	if err != nil || value == truthUnknown {
-		return value, err
-	}
-	return truthFromBool(value == truthFalse), nil
-}
-
-func truthFromBool(value bool) truthValue {
-	if value {
-		return truthTrue
-	}
-	return truthFalse
-}
-
-func compareInt(left, right int, op string) bool {
-	switch op {
-	case "=":
-		return left == right
-	case "!=":
-		return left != right
-	case "<":
-		return left < right
-	case "<=":
-		return left <= right
-	case ">":
-		return left > right
-	case ">=":
-		return left >= right
-	default:
-		return false
-	}
-}
-
-func compareString(left, right, op string) bool {
-	switch op {
-	case "=":
-		return left == right
-	case "!=":
-		return left != right
-	case "<":
-		return left < right
-	case "<=":
-		return left <= right
-	case ">":
-		return left > right
-	case ">=":
-		return left >= right
-	default:
-		return false
-	}
-}
-
-func like(value, pattern string) bool {
-	quoted := regexp.QuoteMeta(pattern)
-	quoted = strings.ReplaceAll(quoted, "%", ".*")
-	quoted = strings.ReplaceAll(quoted, "_", ".")
-	return regexp.MustCompile("^" + quoted + "$").MatchString(value)
+	return value
 }

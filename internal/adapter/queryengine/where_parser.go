@@ -363,3 +363,56 @@ func (parser *whereParser) matchIdent(text string) bool {
 	parser.advance()
 	return true
 }
+
+// expr is produced only by the restricted parser; values remain SQL parameters.
+type expr interface {
+	sql() (string, []any)
+}
+
+type comparison struct {
+	column string
+	op     string
+	value  string
+}
+
+func (node comparison) sql() (string, []any) {
+	array := node.column == "author" || node.column == "genre" || node.column == "translator"
+	if !array {
+		if node.op == "is null" || node.op == "is not null" {
+			return node.column + " " + node.op, nil
+		}
+		return node.column + " " + node.op + " ?", []any{node.value}
+	}
+	length := "json_array_length(" + node.column + ")"
+	if node.op == "is null" {
+		return length + " = 0", nil
+	}
+	if node.op == "is not null" {
+		return length + " > 0", nil
+	}
+	op := node.op
+	prefix := ""
+	if op == "!=" {
+		op = "="
+		prefix = "NOT "
+	}
+	return "CASE WHEN " + length + " = 0 THEN NULL ELSE " + prefix + "EXISTS (SELECT 1 FROM json_each(" + node.column + ") WHERE value " + op + " ?) END", []any{node.value}
+}
+
+type logical struct {
+	op          string
+	left, right expr
+}
+
+func (node logical) sql() (string, []any) {
+	left, leftArgs := node.left.sql()
+	right, rightArgs := node.right.sql()
+	return "(" + left + " " + node.op + " " + right + ")", append(leftArgs, rightArgs...)
+}
+
+type negation struct{ inner expr }
+
+func (node negation) sql() (string, []any) {
+	inner, args := node.inner.sql()
+	return "NOT (" + inner + ")", args
+}

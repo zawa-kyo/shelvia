@@ -32,57 +32,19 @@ Shelvia は Clean Architecture を採用し、外部入出力の境界には Por
 
 ```text
 .
-├── cmd/
-│   └── shelvia/
-│       └── main.go
+├── cmd/shelvia/           # CLI のエントリーポイント
 ├── internal/
-│   ├── domain/
-│   │   ├── book.go
-│   │   ├── book_draft.go
-│   │   ├── allowed_values.go
-│   │   ├── author.go
-│   │   ├── edition.go
-│   │   ├── file_path.go
-│   │   ├── genre.go
-│   │   ├── imprint.go
-│   │   ├── optional_text.go
-│   │   ├── publisher.go
-│   │   ├── rating.go
-│   │   ├── read_date.go
-│   │   └── title.go
-│   ├── application/
-│   │   ├── commands.go
-│   │   ├── ports.go
-│   │   ├── shelf_service.go
-│   │   └── query_service.go
-│   └── adapter/
-│       ├── cli/
-│       │   ├── parser.go
-│       │   └── runner.go
-│       ├── localfs/
-│       │   ├── shelf_repository.go
-│       │   └── templates.go
-│       ├── queryengine/
-│       │   └── query_store.go
-│       └── presentation/
-│           └── output.go
-├── docs/
-│   ├── architecture.md
-│   ├── cli-behavior.md
-│   ├── implementation.md
-│   └── testing.md
-├── fixtures/
-│   └── shelves/
-│       ├── valid/
-│       │   └── minimal/
-│       │       ├── config.toml
-│       │       ├── example.toml
-│       │       └── Some Book.toml
-│       └── invalid/
-│           ├── nested-config/
-│           ├── missing-required/
-│           ├── unknown-config-value/
-│           └── unsafe-filename/
+│   ├── domain/            # ドメインモデルとルール
+│   ├── application/       # ユースケースとポート
+│   ├── adapter/
+│   │   ├── cli/           # 引数解析と実行
+│   │   ├── localfs/       # ファイルの読み書き
+│   │   ├── queryengine/   # 検索
+│   │   └── presentation/  # 出力の整形
+│   └── integration/       # アダプター間の結合テスト
+├── e2e/                   # CLI バイナリの E2E テスト
+├── fixtures/shelves/      # テスト用の shelf データ
+├── docs/                  # 設計ドキュメント
 ├── README-ja.md
 ├── README.md
 └── AGENTS.md
@@ -109,7 +71,7 @@ Shelvia は Clean Architecture を採用し、外部入出力の境界には Por
 ユースケースの調停と実行フローの制御を行います。
 
 - コマンド (`validate`, `list`, `search`, `add`, `init` など) の実行オーケストレーション
-- ポートインターフェース (`ShelfRepository`, `QueryStore` など) の定義
+- ポートインターフェース (`ShelfRepository`, `QueryStore` など) の定義。検索ポートは並び替え済みの書籍を返します。
 - ファイル上書きの禁止判定 (`init` や `add` での既存ファイル衝突防止)
 - 具体的なストレージやクエリエンジンには依存せず、ドメインモデルとポートのみを操作します。
 
@@ -132,11 +94,12 @@ OS のコマンドライン引数を解析し、アプリケーション層の�
 検証済みの書籍コレクションからインメモリの一時的な検索ビューを構築し、アプリケーション層の検索ポートを実装します。
 
 - 内部実装として SQLite を利用しますが、パッケージ名やインターフェースに「SQLite」という技術名を漏らしません。
-- `search` コマンドで受け取った SQL ライクなクエリフラグメントを、[CLI Behavior](./cli-behavior.md) で定義された許可範囲内に収まっているか事前に検証し、不正な構文を拒否します。
+- `search` コマンドで受け取った SQL ライクな条件を解析し、[CLI Behavior](./cli-behavior.md) の許可範囲外の構文を拒否します。検証済みの条件を SQL に変換し、値はパラメーターとして渡します。
+- 配列項目を JSON 配列として一時ビューに格納し、要素単位の比較と未指定値を SQL で評価します。配列の辞書順を含む並び替えは Go 側で行います。
 
 ### `internal/adapter/presentation`
 
-コマンドの実行結果を端末向けに整形して出力します。
+コマンドの実行結果を端末向けに整形して出力します。検索や詳細表示で得た書籍から表示列と CSV の値を組み立てます。
 
 - `validate` の成否 (件数またはエラー箇所) のメッセージ整形
 - `list` および `search` のテーブル表示、CSV 出力
@@ -147,5 +110,5 @@ OS のコマンドライン引数を解析し、アプリケーション層の�
 `fixtures/shelves/` は、結合テストや手動検証で利用する実際の shelf データを配置するディレクトリです。
 
 - **`valid/`**: 正常に検証を通過する shelf。`minimal/` は `README` で示される基本構成を再現しています。
-- **`invalid/`**: 特定のバリデーション違反を検証するための shelf。1 ディレクトリにつき 1 つのエラー原因 (設定ファイル重複、必須項目欠落、未登録のジャンル、不正なファイル名など) を再現し、テスト名と対応させます。
+- **`invalid/`**: 特定のバリデーション違反を検証するための shelf。1 ディレクトリにつき 1 つのエラー原因 (設定ファイルの誤配置、必須項目欠落、未登録のジャンルなど) を再現し、テスト名と対応させます。
 - **モックとの分離**: `fixtures/` は本物のファイル構造としてそのまま読み込ませるものであり、テストダブル (Mock/Fake) のコードとは明確に区別します。
