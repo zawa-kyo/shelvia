@@ -56,7 +56,19 @@ func queryBooks(books []domain.Book, query queryFragment) ([]domain.Book, error)
 	defer stmt.Close()
 	for i, book := range books {
 		row := rowFromBook(book)
-		if _, err := stmt.Exec(i, book.Title().String(), book.Rating().Int(), book.ReadDate().String(), book.Publisher().String(), nullIfEmpty(row.scalars["edition"]), nullIfEmpty(row.scalars["imprint"]), nullIfEmpty(row.scalars["series"]), jsonArray(book.Authors()), jsonArray(book.Genres()), jsonArray(book.Translators())); err != nil {
+		if _, err := stmt.Exec(
+			i,
+			book.Title().String(),
+			book.Rating().Int(),
+			book.ReadDate().String(),
+			book.Publisher().String(),
+			nullIfEmpty(row.scalars["edition"]),
+			nullIfEmpty(row.scalars["imprint"]),
+			nullIfEmpty(row.scalars["series"]),
+			jsonArray(book.Authors()),
+			jsonArray(book.Genres()),
+			jsonArray(book.Translators()),
+		); err != nil {
 			return nil, err
 		}
 	}
