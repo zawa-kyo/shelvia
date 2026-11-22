@@ -14,20 +14,26 @@ type commandRunner interface {
 // Parses arguments, runs the application service, and writes output.
 func Run(args []string, service commandRunner, out io.Writer, errOut io.Writer) int {
 	command, err := Parse(args)
-	if err == nil {
-		var output application.Output
-		output, err = service.Run(command)
-		if err == nil {
-			if command.Format == "csv" {
-				err = presentation.WriteCSV(out, output)
-			} else {
-				err = presentation.Write(out, output)
-			}
-			if err == nil {
-				return 0
-			}
-		}
+	if err != nil {
+		presentation.WriteError(errOut, err)
+		return 1
 	}
-	presentation.WriteError(errOut, err)
-	return 1
+
+	output, err := service.Run(command)
+	if err != nil {
+		presentation.WriteError(errOut, err)
+		return 1
+	}
+
+	if command.Format == "csv" {
+		err = presentation.WriteCSV(out, output)
+	} else {
+		err = presentation.Write(out, output)
+	}
+	if err != nil {
+		presentation.WriteError(errOut, err)
+		return 1
+	}
+
+	return 0
 }
