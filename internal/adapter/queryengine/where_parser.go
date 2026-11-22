@@ -22,9 +22,15 @@ var allowedColumns = map[string]struct{}{
 }
 
 var rejectedKeywords = map[string]struct{}{
-	"select": {}, "insert": {}, "update": {}, "delete": {},
-	"create": {}, "alter": {}, "drop": {},
-	"join": {}, "union": {},
+	"select": {},
+	"insert": {},
+	"update": {},
+	"delete": {},
+	"create": {},
+	"alter":  {},
+	"drop":   {},
+	"join":   {},
+	"union":  {},
 }
 
 type queryFragment struct {
@@ -42,15 +48,18 @@ func parseQueryFragment(input string) (queryFragment, error) {
 	if err != nil {
 		return queryFragment{}, err
 	}
+
 	parser := whereParser{tokens: tokens}
 	parsed, err := parser.parseOr()
 	if err != nil {
 		return queryFragment{}, err
 	}
+
 	order, err := parser.parseOrder()
 	if err != nil {
 		return queryFragment{}, err
 	}
+
 	if parser.peek().kind != tokenEOF {
 		return queryFragment{}, fmt.Errorf("unsupported search condition near %q", parser.peek().text)
 	}
@@ -376,13 +385,14 @@ type comparison struct {
 }
 
 func (node comparison) sql() (string, []any) {
-	array := node.column == "author" || node.column == "genre" || node.column == "translator"
-	if !array {
+	isArray := node.column == "author" || node.column == "genre" || node.column == "translator"
+	if !isArray {
 		if node.op == "is null" || node.op == "is not null" {
 			return node.column + " " + node.op, nil
 		}
 		return node.column + " " + node.op + " ?", []any{node.value}
 	}
+
 	length := "json_array_length(" + node.column + ")"
 	if node.op == "is null" {
 		return length + " = 0", nil
@@ -390,12 +400,14 @@ func (node comparison) sql() (string, []any) {
 	if node.op == "is not null" {
 		return length + " > 0", nil
 	}
+
 	op := node.op
 	prefix := ""
 	if op == "!=" {
 		op = "="
 		prefix = "NOT "
 	}
+
 	condition := "CASE WHEN " + length + " = 0 THEN NULL ELSE " + prefix +
 		"EXISTS (SELECT 1 FROM json_each(" + node.column + ") WHERE value " + op + " ?) END"
 	return condition, []any{node.value}

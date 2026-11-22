@@ -36,6 +36,7 @@ func queryBooks(books []domain.Book, query queryFragment) ([]domain.Book, error)
 		return nil, err
 	}
 	defer db.Close()
+
 	// An in-memory SQLite database belongs to a single connection.
 	db.SetMaxOpenConns(1)
 	if _, err := db.Exec(`PRAGMA case_sensitive_like = ON`); err != nil {
@@ -62,6 +63,7 @@ func queryBooks(books []domain.Book, query queryFragment) ([]domain.Book, error)
 		return nil, err
 	}
 	defer tx.Rollback()
+
 	stmt, err := tx.Prepare(`INSERT INTO books VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return nil, err
@@ -86,6 +88,7 @@ func queryBooks(books []domain.Book, query queryFragment) ([]domain.Book, error)
 			return nil, err
 		}
 	}
+
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
@@ -113,6 +116,7 @@ func queryBooks(books []domain.Book, query queryFragment) ([]domain.Book, error)
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
+
 	return sortQueriedBooks(filtered, query.order), nil
 }
 
